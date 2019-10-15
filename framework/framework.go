@@ -47,8 +47,9 @@ func RegisterEventFunction(path string, fn interface{}) {
 	registerEventFunction(path, fn, http.DefaultServeMux)
 }
 
-// Start serves an HTTP server with registered functions.
+// Start serves an HTTP server with registered function(s).
 func Start(port string) error {
+	// Check if we have a function resource set, and if so, log progress.
 	if os.Getenv("K_SERVICE") == "" {
 		fmt.Println("Serving function...")
 	}

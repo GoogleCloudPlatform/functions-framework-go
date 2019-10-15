@@ -1,7 +1,7 @@
 # Functions Framework for Go
 
 An open source FaaS (Function as a Service) framework for writing portable
-Go functions -- brought to you by the Google Cloud Functions team.
+Go functions, brought to you by the Google Cloud Functions team.
 
 The Functions Framework lets you write lightweight functions that run in many
 different environments, including:
@@ -27,7 +27,7 @@ curl http://my-url
 # Output: Hello, World!
 ```
 
-All without needing to worry about writing an HTTP server or complicated request
+All without needing to worry about writing an HTTP server or request
 handling logic.
 
 # Features
@@ -40,84 +40,85 @@ handling logic.
 
 # Quickstart: Hello, World on your local machine
 
-Create the necessary directories.
-```sh
-mkdir -p hello/cmd
-cd hello
-```
+1. Create the necessary directories.
+	```sh
+	mkdir -p hello/cmd
+	cd hello
+	```
 
-Create a Go module:
+1. Create a Go module:
+	```sh
+	go mod init example.com/hello
+	```
 
-```sh
-go mod init example.com/hello
-```
+	> Note: You can use a different module name rather than `example.com/hello`.
 
-> Note: You can use a different module name rather than `example.com/hello`.
+1. Create a `function.go` file with the following contents:
+	```golang
+	package hello
 
-Create a `function.go` file with the following contents:
+	import (
+		"net/http"
+		"fmt"
+	)
 
-```golang
-package hello
-
-import (
-	"net/http"
-	"fmt"
-)
-
-// HelloWorld writes "Hello, World!" to the HTTP response.
-func HelloWorld(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprint(w, "Hello, World!")
-}
-```
-
-> Note that you can use any file name or package name(convention is to make
-package name same as directory name).
-
-Now go to the `cmd` subdirectory.
-```sh
-cd cmd
-```
-
-Create a `main.go` file with the following contents:
-
-```golang
-package main
-
-import (
-	"fmt"
-	"log"
-	"net/http"
-
-	"cloud.google.com/go/functions/framework"
-	"example.com/hello"
-)
-
-func main() {
-	if err := framework.RegisterHTTPFunction("/", hello.HelloWorld); err != nil {
-		log.Fatalf("framework.RegisterHTTPFunction: %v\n", err)
+	// HelloWorld writes "Hello, World!" to the HTTP response.
+	func HelloWorld(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "Hello, World!")
 	}
-	port := ":8080"
-	if err := framework.Start(port); err != nil {
-		log.Fatalf("framework.Start: %v\n", err)
+	```
+
+	> Note that you can use any file name or package name (convention is to make
+	package name same as directory name).
+
+1. Now go to the `cmd` subdirectory.
+	```sh
+	cd cmd
+	```
+
+1. Create a `main.go` file with the following contents:
+	```golang
+	package main
+
+	import (
+		"fmt"
+		"log"
+		"net/http"
+		"os"
+
+		"cloud.google.com/go/functions/framework"
+		"example.com/hello"
+	)
+
+	func main() {
+		if err := framework.RegisterHTTPFunction("/", hello.HelloWorld); err != nil {
+			log.Fatalf("framework.RegisterHTTPFunction: %v\n", err)
+		}
+		// Use PORT environment variable, or default to 8080.
+        port := "8080"
+        if envPort := os.Getenv("PORT"); envPort != "" {
+                port = envPort
+        }
+
+		if err := framework.Start(port); err != nil {
+			log.Fatalf("framework.Start: %v\n", err)
+		}
 	}
-}
-```
+	```
 
-Start the built-in local development server:
+1. Start the local development server:
+	```sh
+	go build
+	./cmd
+	Function serving...
+	URL: http://localhost:8080/
+	```
 
-```sh
-go build
-./cmd
-Function serving...
-URL: http://localhost:8080/
-```
-
-Send requests to this function using `curl` from another terminal window:
-
-```sh
-curl localhost:8080
-# Output: Hello, World!
-```
+2. Send requests to this function using `curl` from another terminal window:
+	```sh
+	curl localhost:8080
+	# Output: Hello, World!
+	```
 
 # Run your function on serverless platforms
 
@@ -143,23 +144,23 @@ Just build and deploy your container to a Knative environment. Note that your ap
 
 If you're deploying to Google Cloud Functions, you don't need to worry about writing a
 `package main`. But if you want to run your function locally (e.g., for local development),
-you may want to configure the port, function to be executed and function signature type
+you may want to configure the port, the function to be executed, and the function signature type
 (which specifies event unmarshalling logic). You can do this by modifying the `main.go`
 file described above.
 
-To select a port change the port variable that is passed to `framework.Start` like this:
+To select a port, set the `$PORT` environment variable when running.
 
-```golang
-framework.Start(myPort)
+```sh
+PORT=8000 ./cmd
 ```
 
-To select a function pass your function to `framework.RegisterHTTPFunction` in the second variable:
+To select a function, pass your function to `framework.RegisterHTTPFunction` in the second variable.
 
 ```golang
 framework.RegisterHTTPFunction("/", myFunction);
 ```
 
-If your function handles events, use `framework.RegisterEventFunction` instead of `framework.RegisterHTTPFunction`:
+If your function handles events, use `framework.RegisterEventFunction` instead of `framework.RegisterHTTPFunction`.
 
 ```golang
 framework.RegisterEventFunction("/", eventFunction);
@@ -172,17 +173,17 @@ func eventFunction(ctx context.Context, e myEventType){
 > Note that the first parameter to a function that handles events has to be `context.Context`
 and the type of second parameter needs to be a type of an unmarshallable event.
 
-# Enable CloudEvents handling for use with the event function signature
+# Handle Cloud Events
 
-The Functions Framework can unmarshal to custom structs, for example, unmarshalling an incoming
-[CloudEvents](http://cloudevents.io) payloads to a `cloudevents.Event` object.
-These will be passed as arguments to your function when it receives a request.
-Note that your function must use the event-style function signature:
+The Functions Framework can unmarshal to custom structs, and provides support for 
+unmarshalling an incoming [CloudEvents](http://cloudevents.io) payload to a
+`cloudevents.Event` object. These will be passed as arguments to your function when it receives a request.
+Note that your function must use the event-style function signature.
 
 ```golang
 func CloudEventsFunction(ctx context.Context, e cloudevents.Event) {
-    // do something with event.Context and event.Data (via event.DataAs(foo))
+    // Do something with event.Context and event.Data (via event.DataAs(foo)).
 }
 ```
 
-To learn more about CloudEvents see [Go SDK for CloudEvents](https://github.com/cloudevents/sdk-go)
+To learn more about CloudEvents, see the [Go SDK for CloudEvents](https://github.com/cloudevents/sdk-go).
