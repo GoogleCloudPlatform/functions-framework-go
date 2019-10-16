@@ -146,7 +146,7 @@ If you're deploying to Google Cloud Functions, you don't need to worry about wri
 `package main`. But if you want to run your function locally (e.g., for local development),
 you may want to configure the port, the function to be executed, and the function signature type
 (which specifies event unmarshalling logic). You can do this by modifying the `main.go`
-file described above.
+file described above:
 
 To select a port, set the `$PORT` environment variable when running.
 
@@ -173,7 +173,7 @@ func eventFunction(ctx context.Context, e myEventType){
 > Note that the first parameter to a function that handles events has to be `context.Context`
 and the type of second parameter needs to be a type of an unmarshallable event.
 
-# Handle Cloud Events
+# Enable Cloud Events
 
 The Functions Framework can unmarshal to custom structs, and provides support for 
 unmarshalling an incoming [CloudEvents](http://cloudevents.io) payload to a
