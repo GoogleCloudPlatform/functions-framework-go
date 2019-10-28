@@ -40,6 +40,12 @@ handling logic.
 
 # Quickstart: Hello, World on your local machine
 
+1. Make sure you have Go 1.11+ installed with:
+	```
+	go version
+	```
+	The output should be Go 1.11 or higher.
+
 1. Create the necessary directories.
 	```sh
 	mkdir -p hello/cmd
@@ -81,19 +87,15 @@ handling logic.
 	package main
 
 	import (
-		"fmt"
 		"log"
-		"net/http"
 		"os"
 
-		"cloud.google.com/go/functions/framework"
+		"github.com/GoogleCloudPlatform/functions-framework-go/framework"
 		"example.com/hello"
 	)
 
 	func main() {
-		if err := framework.RegisterHTTPFunction("/", hello.HelloWorld); err != nil {
-			log.Fatalf("framework.RegisterHTTPFunction: %v\n", err)
-		}
+		framework.RegisterHTTPFunction("/", hello.HelloWorld); err != nil {
 		// Use PORT environment variable, or default to 8080.
         port := "8080"
         if envPort := os.Getenv("PORT"); envPort != "" {
