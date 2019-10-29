@@ -70,7 +70,7 @@ handling logic.
 
 	// HelloWorld writes "Hello, World!" to the HTTP response.
 	func HelloWorld(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Hello, World!")
+		fmt.Fprint(w, "Hello, World!\n")
 	}
 	```
 
@@ -112,8 +112,7 @@ handling logic.
 	```sh
 	go build
 	./cmd
-	Function serving...
-	URL: http://localhost:8080/
+	Serving function...
 	```
 
 2. Send requests to this function using `curl` from another terminal window:
