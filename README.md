@@ -95,7 +95,7 @@ handling logic.
 	)
 
 	func main() {
-		framework.RegisterHTTPFunction("/", hello.HelloWorld); err != nil {
+		framework.RegisterHTTPFunction("/", hello.HelloWorld)
 		// Use PORT environment variable, or default to 8080.
         port := "8080"
         if envPort := os.Getenv("PORT"); envPort != "" {
