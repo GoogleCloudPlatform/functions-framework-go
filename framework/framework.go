@@ -184,7 +184,7 @@ func readHTTPRequestBody(w http.ResponseWriter, r *http.Request) []byte {
 func runUserFunction(w http.ResponseWriter, r *http.Request, data []byte, fn interface{}) {
 	argVal := reflect.New(reflect.TypeOf(fn).In(1))
 	if err := json.Unmarshal(data, argVal.Interface()); err != nil {
-		writeHTTPErrorResponse(w, http.StatusUnsupportedMediaType, crashStatus, fmt.Sprintf("Error while converting event data: %s", err.Error()))
+		writeHTTPErrorResponse(w, http.StatusUnsupportedMediaType, crashStatus, fmt.Sprintf("Error: %s while converting event data: %s", err.Error(), string(data)))
 		return
 	}
 
