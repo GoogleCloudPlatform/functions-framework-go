@@ -36,8 +36,12 @@ const (
 )
 
 // RegisterHTTPFunction registers fn as an HTTP function.
-func RegisterHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request)) {
-	registerHTTPFunction(path, fn, http.DefaultServeMux)
+func RegisterHTTPFunction(path string, fn interface{}) {
+	fnHTTP, ok := fn.(func(http.ResponseWriter, *http.Request))
+	if !ok {
+		panic("expected function to have signature func(http.ResponseWriter, *http.Request)")
+	}
+	registerHTTPFunction(path, fnHTTP, http.DefaultServeMux)
 }
 
 // RegisterEventFunction registers fn as an event function. The function must have two arguments, a
