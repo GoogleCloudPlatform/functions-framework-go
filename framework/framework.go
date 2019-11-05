@@ -27,68 +27,15 @@ import (
 	"reflect"
 	"runtime/debug"
 	"strings"
+
+	"cloud.google.com/go/functions/metadata"
 )
 
 const (
-	// LegacyCloudEventContextKey exposes the key used to store the legacy cloud event context in the context.Context object.
-	LegacyCloudEventContextKey = legacyCloudEventContextKeyType("LegacyCloudEventContext")
 	functionStatusHeader       = "X-Google-Status"
 	crashStatus                = "crash"
 	errorStatus                = "error"
 )
-
-type legacyCloudEventContextKeyType string
-
-type legacyCloudEvent struct {
-	Context legacyCloudEventContext `json:"context"`
-	Data    interface{}             `json:"data"`
-}
-
-type legacyCloudEventContext struct {
-	EventID   string                  `json:"eventId"`
-	Timestamp string                  `json:"timestamp"`
-	EventType string                  `json:"eventType"`
-	Resource  *map[string]interface{} `json:"resource"`
-}
-
-func (e *legacyCloudEvent) UnmarshalJSON(body []byte) error {
-	event := struct {
-		Context legacyCloudEventContext `json:"context"`
-		Data    interface{}             `json:"data"`
-	}{}
-	err := json.Unmarshal(body, &event)
-	if err != nil {
-		return err
-	}
-
-	// Data is required to be at the top level.
-	if event.Data == nil {
-		err = fmt.Errorf("Missing `data` field in legacy cloud event")
-	} else {
-		e.Data = event.Data
-	}
-
-	// Context can either be a top level `context` field, or the relevant fields themselves at the top level.
-	emptyCtx := legacyCloudEventContext{}
-	if event.Context != emptyCtx {
-		e.Context = event.Context
-	} else {
-		// Try to pull the relevant fields directy from the request body.
-		ctx := legacyCloudEventContext{}
-		err = json.Unmarshal(body, &ctx)
-		if err != nil {
-			return err
-		}
-		if ctx == emptyCtx {
-			return fmt.Errorf("Missing context fields in legacy cloud event")
-		}
-
-		// Populate the event's context.
-		e.Context = ctx
-	}
-
-	return nil
-}
 
 // RegisterHTTPFunction registers fn as an HTTP function.
 func RegisterHTTPFunction(path string, fn interface{}) {
@@ -173,12 +120,38 @@ func isStructuredCloudEvent(r *http.Request) bool {
 	return false
 }
 
-func getLegacyCloudEventIfPresent(r *http.Request, body []byte) (*legacyCloudEvent, error) {
-	event := legacyCloudEvent{}
+func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, *interface{}, error) {
+	// Handle legacy events' "data" and "context" fields.
+	event := struct {
+                Data *interface{} `json:"data"`
+		Metadata *metadata.Metadata `json:"context"`
+	}{}
 	if err := json.Unmarshal(body, &event); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return &event, nil
+
+	// If there is no "data" payload, this isn't a legacy cloud event, but that's okay.
+	if event.Data == nil {
+		return nil, nil, nil
+	}
+
+	// If the "context" field was present, we have a complete event and so return.
+	if event.Metadata != nil {
+		return event.Metadata, event.Data, nil
+	}
+
+	// Otherwise, try to directly populate a metadata object.
+	m := metadata.Metadata{}
+	if err := json.Unmarshal(body, &m); err != nil {
+		return nil, nil, err
+	}
+
+	// Check for event ID to see if this is a legacy event, but if not that's okay.
+	if m.EventID == "" {
+		return nil, nil, nil
+	}
+
+	return &m, event.Data, nil
 }
 
 func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{}) {
@@ -194,9 +167,12 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 		return
 	}
 
-	// Legacy cloud events (e.g. pubsub) have a `data` and a `context`, so parse those.
-	if event, err := getLegacyCloudEventIfPresent(r, body); err == nil {
-		runLegacyCloudEvent(w, r, event, fn)
+	// Legacy cloud events (e.g. pubsub) have data and an associated metdata, so parse those and run if present.
+	if metadata, data, err := getLegacyCloudEvent(r, body); err != nil {
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("error parsing legacy cloud event: %v", err))
+		return
+	} else if data != nil && metadata != nil {
+		runLegacyCloudEvent(w, r, metadata, *data, fn)
 		return
 	}
 
@@ -242,16 +218,16 @@ func runStructuredCloudEvent(w http.ResponseWriter, r *http.Request, body []byte
 	runUserFunction(w, r, buf.Bytes(), fn)
 }
 
-func runLegacyCloudEvent(w http.ResponseWriter, r *http.Request, e *legacyCloudEvent, fn interface{}) {
-	ctx := context.WithValue(r.Context(), LegacyCloudEventContextKey, e.Context)
+func runLegacyCloudEvent(w http.ResponseWriter, r *http.Request, m *metadata.Metadata, data, fn interface{}) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
-	err := enc.Encode(e.Data)
+	err := enc.Encode(data)
 	if err != nil {
 		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Unable to encode data: %s", err.Error()))
 		return
 	}
+	ctx := metadata.NewContext(r.Context(), m)
 	runUserFunctionWithContext(ctx, w, r, buf.Bytes(), fn)
 }
 
