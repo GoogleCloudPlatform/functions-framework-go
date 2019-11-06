@@ -27,6 +27,8 @@ import (
 	"reflect"
 	"runtime/debug"
 	"strings"
+
+	"cloud.google.com/go/functions/metadata"
 )
 
 const (
@@ -108,14 +110,48 @@ func validateEventFunction(fn interface{}) {
 	}
 }
 
-func isBinaryCloudEvent(r *http.Request) bool {
+func isStructuredCloudEvent(r *http.Request) bool {
 	ceReqHeaders := []string{"Ce-Type", "Ce-Specversion", "Ce-Source", "Ce-Id"}
 	for _, h := range ceReqHeaders {
 		if _, ok := r.Header[http.CanonicalHeaderKey(h)]; ok {
-			return false
+			return true
 		}
 	}
-	return true
+	return false
+}
+
+func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, interface{}, error) {
+	// Handle legacy events' "data" and "context" fields.
+	event := struct {
+		Data     interface{}        `json:"data"`
+		Metadata *metadata.Metadata `json:"context"`
+	}{}
+	if err := json.Unmarshal(body, &event); err != nil {
+		return nil, nil, err
+	}
+
+	// If there is no "data" payload, this isn't a legacy cloud event, but that's okay.
+	if event.Data == nil {
+		return nil, nil, nil
+	}
+
+	// If the "context" field was present, we have a complete event and so return.
+	if event.Metadata != nil {
+		return event.Metadata, event.Data, nil
+	}
+
+	// Otherwise, try to directly populate a metadata object.
+	m := &metadata.Metadata{}
+	if err := json.Unmarshal(body, m); err != nil {
+		return nil, nil, err
+	}
+
+	// Check for event ID to see if this is a legacy event, but if not that's okay.
+	if m.EventID == "" {
+		return nil, nil, nil
+	}
+
+	return m, event.Data, nil
 }
 
 func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{}) {
@@ -125,12 +161,28 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 		return
 	}
 
-	if isBinaryCloudEvent(r) {
-		runUserFunction(w, r, body, fn)
+	// Structured cloud events contain the context in the header, so we need to parse that out.
+	if isStructuredCloudEvent(r) {
+		runStructuredCloudEvent(w, r, body, fn)
 		return
 	}
 
-	// Otherwise, we have to parse the request to extract the context and the body for the data.
+	// Legacy cloud events (e.g. pubsub) have data and an associated metdata, so parse those and run if present.
+	if metadata, data, err := getLegacyCloudEvent(r, body); err != nil {
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("error parsing legacy cloud event: %v", err))
+		return
+	} else if data != nil && metadata != nil {
+		runLegacyCloudEvent(w, r, metadata, data, fn)
+		return
+	}
+
+	// Otherwise, we assume the body is a JSON blob containing the user-specified data structure.
+	runUserFunction(w, r, body, fn)
+	return
+}
+
+func runStructuredCloudEvent(w http.ResponseWriter, r *http.Request, body []byte, fn interface{}) {
+	// Parse the request to extract the context and the body for the data.
 	event := make(map[string]interface{})
 	event["data"] = string(body)
 	for k, v := range r.Header {
@@ -166,6 +218,18 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 	runUserFunction(w, r, buf.Bytes(), fn)
 }
 
+func runLegacyCloudEvent(w http.ResponseWriter, r *http.Request, m *metadata.Metadata, data, fn interface{}) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(data); err != nil {
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Unable to encode data: %s", err.Error()))
+		return
+	}
+	ctx := metadata.NewContext(r.Context(), m)
+	runUserFunctionWithContext(ctx, w, r, buf.Bytes(), fn)
+}
+
 func readHTTPRequestBody(w http.ResponseWriter, r *http.Request) []byte {
 	if r.Body == nil {
 		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, "Request body not found")
@@ -182,6 +246,10 @@ func readHTTPRequestBody(w http.ResponseWriter, r *http.Request) []byte {
 }
 
 func runUserFunction(w http.ResponseWriter, r *http.Request, data []byte, fn interface{}) {
+	runUserFunctionWithContext(r.Context(), w, r, data, fn)
+}
+
+func runUserFunctionWithContext(ctx context.Context, w http.ResponseWriter, r *http.Request, data []byte, fn interface{}) {
 	argVal := reflect.New(reflect.TypeOf(fn).In(1))
 	if err := json.Unmarshal(data, argVal.Interface()); err != nil {
 		writeHTTPErrorResponse(w, http.StatusUnsupportedMediaType, crashStatus, fmt.Sprintf("Error: %s, while converting event data: %s", err.Error(), string(data)))
@@ -189,7 +257,7 @@ func runUserFunction(w http.ResponseWriter, r *http.Request, data []byte, fn int
 	}
 
 	userFunErr := reflect.ValueOf(fn).Call([]reflect.Value{
-		reflect.ValueOf(r.Context()),
+		reflect.ValueOf(ctx),
 		argVal.Elem(),
 	})
 	if userFunErr[0].Interface() != nil {

@@ -57,6 +57,10 @@ type customStruct struct {
 	Name string `json:"name"`
 }
 
+type eventData struct {
+	Data string `json:"data"`
+}
+
 func TestEventFunction(t *testing.T) {
 	cloudeventsJSON := []byte(`{
 		"specversion" : "0.3",
@@ -146,6 +150,60 @@ func TestEventFunction(t *testing.T) {
 			fn: func(c context.Context, e cloudevents.Event) error {
 				if e.String() != testCE.String() {
 					return fmt.Errorf("TestEventFunction(binary cloudevent request): got: %v, want: %v", e, testCE)
+				}
+				return nil
+			},
+			status: http.StatusOK,
+			header: "",
+		},
+		{
+			name: "pubsub event",
+			data: []byte(`{
+				"context": {
+					"eventId": "1234567",
+					"timestamp": "2019-11-04T23:01:10.112Z",
+					"eventType": "google.pubsub.topic.publish",
+					"resource": {
+						"service": "pubsub.googleapis.com",
+						"name": "mytopic",
+						"type": "type.googleapis.com/google.pubsub.v1.PubsubMessage"
+					}
+				},
+				"data": {
+					"@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
+					"attributes": null,
+					"data": "test data"
+					}
+				}`),
+			fn: func(c context.Context, e eventData) error {
+				if e.Data != "test data" {
+					return fmt.Errorf("TestEventFunction(pubsub event): got: %v, want: 'test data'", e.Data)
+				}
+				return nil
+			},
+			status: http.StatusOK,
+			header: "",
+		},
+		{
+			name: "pubsub legacy event",
+			data: []byte(`{
+				"eventId": "1234567",
+				"timestamp": "2019-11-04T23:01:10.112Z",
+				"eventType": "google.pubsub.topic.publish",
+				"resource": {
+					"service": "pubsub.googleapis.com",
+					"name": "mytopic",
+					"type": "type.googleapis.com/google.pubsub.v1.PubsubMessage"
+				},
+				"data": {
+					"@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
+					"attributes": null,
+					"data": "test data"
+					}
+				}`),
+			fn: func(c context.Context, e eventData) error {
+				if e.Data != "test data" {
+					return fmt.Errorf("TestEventFunction(pubsub legacy event): got: %v, want: 'test data'", e.Data)
 				}
 				return nil
 			},
