@@ -32,9 +32,9 @@ import (
 )
 
 const (
-	functionStatusHeader       = "X-Google-Status"
-	crashStatus                = "crash"
-	errorStatus                = "error"
+	functionStatusHeader = "X-Google-Status"
+	crashStatus          = "crash"
+	errorStatus          = "error"
 )
 
 // RegisterHTTPFunction registers fn as an HTTP function.
@@ -120,10 +120,10 @@ func isStructuredCloudEvent(r *http.Request) bool {
 	return false
 }
 
-func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, *interface{}, error) {
+func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, interface{}, error) {
 	// Handle legacy events' "data" and "context" fields.
 	event := struct {
-                Data *interface{} `json:"data"`
+		Data     interface{}        `json:"data"`
 		Metadata *metadata.Metadata `json:"context"`
 	}{}
 	if err := json.Unmarshal(body, &event); err != nil {
@@ -141,8 +141,8 @@ func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, *int
 	}
 
 	// Otherwise, try to directly populate a metadata object.
-	m := metadata.Metadata{}
-	if err := json.Unmarshal(body, &m); err != nil {
+	m := &metadata.Metadata{}
+	if err := json.Unmarshal(body, m); err != nil {
 		return nil, nil, err
 	}
 
@@ -151,7 +151,7 @@ func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, *int
 		return nil, nil, nil
 	}
 
-	return &m, event.Data, nil
+	return m, event.Data, nil
 }
 
 func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{}) {
@@ -172,7 +172,7 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("error parsing legacy cloud event: %v", err))
 		return
 	} else if data != nil && metadata != nil {
-		runLegacyCloudEvent(w, r, metadata, *data, fn)
+		runLegacyCloudEvent(w, r, metadata, data, fn)
 		return
 	}
 
@@ -222,8 +222,7 @@ func runLegacyCloudEvent(w http.ResponseWriter, r *http.Request, m *metadata.Met
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
-	err := enc.Encode(data)
-	if err != nil {
+	if err := enc.Encode(data); err != nil {
 		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Unable to encode data: %s", err.Error()))
 		return
 	}
