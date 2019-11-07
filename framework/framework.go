@@ -169,7 +169,7 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 
 	// Legacy cloud events (e.g. pubsub) have data and an associated metdata, so parse those and run if present.
 	if metadata, data, err := getLegacyCloudEvent(r, body); err != nil {
-		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("error parsing legacy cloud event: %v", err))
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, parsing legacy cloud event: %s", err.Error(), string(body)))
 		return
 	} else if data != nil && metadata != nil {
 		runLegacyCloudEvent(w, r, metadata, data, fn)
@@ -211,7 +211,7 @@ func runStructuredCloudEvent(w http.ResponseWriter, r *http.Request, body []byte
 	enc.SetEscapeHTML(false)
 	err := enc.Encode(event)
 	if err != nil {
-		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Unable to construct event: %s", err.Error()))
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Unable to construct event %v: %s", event, err.Error()))
 		return
 	}
 
@@ -223,7 +223,7 @@ func runLegacyCloudEvent(w http.ResponseWriter, r *http.Request, m *metadata.Met
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
 	if err := enc.Encode(data); err != nil {
-		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Unable to encode data: %s", err.Error()))
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Unable to encode data %v: %s", data, err.Error()))
 		return
 	}
 	ctx := metadata.NewContext(r.Context(), m)
@@ -238,7 +238,7 @@ func readHTTPRequestBody(w http.ResponseWriter, r *http.Request) []byte {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		writeHTTPErrorResponse(w, http.StatusUnsupportedMediaType, crashStatus, fmt.Sprintf("Could not read request body: %s", err.Error()))
+		writeHTTPErrorResponse(w, http.StatusUnsupportedMediaType, crashStatus, fmt.Sprintf("Could not read request body %s: %s", r.Body, err.Error()))
 		return nil
 	}
 
