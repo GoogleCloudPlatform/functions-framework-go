@@ -90,20 +90,20 @@ handling logic.
 		"log"
 		"os"
 
-		"github.com/GoogleCloudPlatform/functions-framework-go/framework"
+		"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 		"example.com/hello"
 	)
 
 	func main() {
-		framework.RegisterHTTPFunction("/", hello.HelloWorld)
+		funcframework.RegisterHTTPFunction("/", hello.HelloWorld)
 		// Use PORT environment variable, or default to 8080.
 		port := "8080"
 		if envPort := os.Getenv("PORT"); envPort != "" {
 			port = envPort
 		}
 
-		if err := framework.Start(port); err != nil {
-			log.Fatalf("framework.Start: %v\n", err)
+		if err := funcframework.Start(port); err != nil {
+			log.Fatalf("funcframework.Start: %v\n", err)
 		}
 	}
 	```
@@ -155,16 +155,16 @@ To select a port, set the `$PORT` environment variable when running.
 PORT=8000 ./cmd
 ```
 
-To select a function, pass your function to `framework.RegisterHTTPFunction` in the second variable.
+To select a function, pass your function to `funcframework.RegisterHTTPFunction` in the second variable.
 
 ```golang
-framework.RegisterHTTPFunction("/", myFunction);
+funcframework.RegisterHTTPFunction("/", myFunction);
 ```
 
-If your function handles events, use `framework.RegisterEventFunction` instead of `framework.RegisterHTTPFunction`.
+If your function handles events, use `funcframework.RegisterEventFunction` instead of `funcframework.RegisterHTTPFunction`.
 
 ```golang
-framework.RegisterEventFunction("/", eventFunction);
+funcframework.RegisterEventFunction("/", eventFunction);
 
 func eventFunction(ctx context.Context, e myEventType){
 	// function logic
