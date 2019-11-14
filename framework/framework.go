@@ -178,7 +178,6 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 
 	// Otherwise, we assume the body is a JSON blob containing the user-specified data structure.
 	runUserFunction(w, r, body, fn)
-	return
 }
 
 func runStructuredCloudEvent(w http.ResponseWriter, r *http.Request, body []byte, fn interface{}) {
@@ -269,6 +268,6 @@ func runUserFunctionWithContext(ctx context.Context, w http.ResponseWriter, r *h
 func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg string) {
 	w.Header().Set(functionStatusHeader, status)
 	w.WriteHeader(statusCode)
-	fmt.Fprintf(os.Stderr, msg)
-	fmt.Fprintf(w, msg)
+	fmt.Fprint(os.Stderr, msg)
+	fmt.Fprint(w, msg)
 }

@@ -220,6 +220,10 @@ func TestEventFunction(t *testing.T) {
 		defer srv.Close()
 
 		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.data))
+		if err != nil {
+			t.Errorf("http.NewRequest(%s): %v", tc.name, err)
+			continue
+		}
 		req.Header.Set("Content-Type", "application/json")
 		for k, v := range tc.ceHeaders {
 			req.Header.Set(k, v)
