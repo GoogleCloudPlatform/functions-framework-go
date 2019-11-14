@@ -178,7 +178,6 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 
 	// Otherwise, we assume the body is a JSON blob containing the user-specified data structure.
 	runUserFunction(w, r, body, fn)
-	return
 }
 
 func runStructuredCloudEvent(w http.ResponseWriter, r *http.Request, body []byte, fn interface{}) {
