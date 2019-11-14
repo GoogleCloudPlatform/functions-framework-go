@@ -268,6 +268,6 @@ func runUserFunctionWithContext(ctx context.Context, w http.ResponseWriter, r *h
 func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg string) {
 	w.Header().Set(functionStatusHeader, status)
 	w.WriteHeader(statusCode)
-	fmt.Fprintf(os.Stderr, msg)
-	fmt.Fprintf(w, msg)
+	fmt.Fprint(os.Stderr, msg)
+	fmt.Fprint(w, msg)
 }
