@@ -16,7 +16,7 @@ The framework allows you to go from:
 
 ```golang
 func HelloWorld(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprint(w, "Hello, World!")
+	fmt.Fprint(w, "Hello, World!")
 }
 ```
 
@@ -97,10 +97,10 @@ handling logic.
 	func main() {
 		framework.RegisterHTTPFunction("/", hello.HelloWorld)
 		// Use PORT environment variable, or default to 8080.
-        port := "8080"
-        if envPort := os.Getenv("PORT"); envPort != "" {
-                port = envPort
-        }
+		port := "8080"
+		if envPort := os.Getenv("PORT"); envPort != "" {
+			port = envPort
+		}
 
 		if err := framework.Start(port); err != nil {
 			log.Fatalf("framework.Start: %v\n", err)
@@ -183,7 +183,7 @@ Note that your function must use the event-style function signature.
 
 ```golang
 func CloudEventsFunction(ctx context.Context, e cloudevents.Event) {
-    // Do something with event.Context and event.Data (via event.DataAs(foo)).
+	// Do something with event.Context and event.Data (via event.DataAs(foo)).
 }
 ```
 
