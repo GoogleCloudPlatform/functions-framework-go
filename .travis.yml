@@ -11,6 +11,6 @@ go_import_path: github.com/GoogleCloudPlatform/functions-framework-go
 before_script: go mod vendor
 
 script:
-- go build -v
-- go vet
+- go test -v ./...
+- go vet ./...
 - find . -not \( \( -wholename './.git' -o -wholename '*/vendor/*' \) -prune \) -name '*.go' | xargs gofmt -s -d
