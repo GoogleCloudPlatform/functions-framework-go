@@ -1,4 +1,4 @@
-# Functions Framework for Go
+# Functions Framework for Go  [![Build Status](https://travis-ci.com/GoogleCloudPlatform/functions-framework-go.svg?branch=master)](https://travis-ci.com/GoogleCloudPlatform/functions-framework-go) [![GoDoc](https://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go?status.svg)](http://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go) [![Go version](https://img.shields.io/badge/go-v1.11+-blue)](https://golang.org/dl/#stable)
 
 An open source FaaS (Function as a Service) framework for writing portable
 Go functions, brought to you by the Google Cloud Functions team.
