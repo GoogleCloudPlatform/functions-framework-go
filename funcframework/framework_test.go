@@ -63,14 +63,13 @@ type eventData struct {
 
 func TestEventFunction(t *testing.T) {
 	cloudeventsJSON := []byte(`{
-		"specversion" : "0.3",
+		"specversion" : "1.0",
 		"type" : "com.github.pull.create",
 		"source" : "https://github.com/cloudevents/spec/pull",
 		"subject" : "123",
 		"id" : "A234-1234-1234",
 		"time" : "2018-04-05T17:31:00Z",
 		"comexampleextension1" : "value",
-		"comexampleextension2" : {"othervalue":5},
 		"datacontenttype" : "text/xml",
 		"data" : "<much wow=\"xml\"/>"
 	}`)
@@ -133,14 +132,13 @@ func TestEventFunction(t *testing.T) {
 			status: http.StatusOK,
 			header: "",
 			ceHeaders: map[string]string{
-				"ce-specversion":          "0.3",
+				"ce-specversion":          "1.0",
 				"ce-type":                 "com.github.pull.create",
 				"ce-source":               "https://github.com/cloudevents/spec/pull",
 				"ce-subject":              "123",
 				"ce-id":                   "A234-1234-1234",
 				"ce-time":                 "2018-04-05T17:31:00Z",
 				"ce-comexampleextension1": "value",
-				"ce-comexampleextension2": `{"othervalue": 5}`,
 				"ce-datacontenttype":      "text/xml",
 			},
 		},
