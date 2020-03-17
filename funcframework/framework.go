@@ -80,7 +80,7 @@ func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Reques
 func registerEventFunction(path string, fn interface{}, h *http.ServeMux) {
 	validateEventFunction(fn)
 	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		if os.Getenv("K_SERVICE") == "" {
+		if os.Getenv("K_SERVICE") != "" {
 			// Force flush of logs after every function trigger when running on GCF.
 			defer fmt.Println()
 			defer fmt.Fprintln(os.Stderr)
