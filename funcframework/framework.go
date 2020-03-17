@@ -79,6 +79,11 @@ func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Reques
 
 func registerEventFunction(path string, fn interface{}, h *http.ServeMux) {
 	validateEventFunction(fn)
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Validation panic: %v\n\n%s", r, debug.Stack())
+		}
+	}()
 	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		// TODO(b/111823046): Remove following once Cloud Functions does not need flushing the logs anymore.
 		// Force flush of logs after every function trigger.
@@ -167,7 +172,7 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 		return
 	}
 
-	// Legacy cloud events (e.g. pubsub) have data and an associated metdata, so parse those and run if present.
+	// Legacy cloud events (e.g. pubsub) have data and an associated metadata, so parse those and run if present.
 	if metadata, data, err := getLegacyCloudEvent(r, body); err != nil {
 		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, parsing legacy cloud event: %s", err.Error(), string(body)))
 		return
