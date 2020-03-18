@@ -80,10 +80,11 @@ func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Reques
 func registerEventFunction(path string, fn interface{}, h *http.ServeMux) {
 	validateEventFunction(fn)
 	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		// TODO(b/111823046): Remove following once Cloud Functions does not need flushing the logs anymore.
-		// Force flush of logs after every function trigger.
-		defer fmt.Println()
-		defer fmt.Fprintln(os.Stderr)
+		if os.Getenv("K_SERVICE") != "" {
+			// Force flush of logs after every function trigger when running on GCF.
+			defer fmt.Println()
+			defer fmt.Fprintln(os.Stderr)
+		}
 		defer func() {
 			if r := recover(); r != nil {
 				writeHTTPErrorResponse(w, http.StatusInternalServerError, crashStatus, fmt.Sprintf("Function panic: %v\n\n%s", r, debug.Stack()))
