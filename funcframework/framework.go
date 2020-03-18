@@ -78,12 +78,12 @@ func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Reques
 }
 
 func registerEventFunction(path string, fn interface{}, h *http.ServeMux) {
-	validateEventFunction(fn)
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Fprintf(os.Stderr, "Validation panic: %v\n\n%s", r, debug.Stack())
 		}
 	}()
+	validateEventFunction(fn)
 	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		// TODO(b/111823046): Remove following once Cloud Functions does not need flushing the logs anymore.
 		// Force flush of logs after every function trigger.
