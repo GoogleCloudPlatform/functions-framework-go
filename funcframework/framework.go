@@ -274,7 +274,7 @@ func runUserFunctionWithContext(ctx context.Context, w http.ResponseWriter, r *h
 
 func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg string) {
 	// Ensure logs end with a newline otherwise they are grouped incorrectly in SD.
-	if msg!=nil && msg != "" && !strings.HasSuffix(msg, "\n") {
+	if msg != "" && !strings.HasSuffix(msg, "\n") {
 		msg += "\n"
 	}
 	w.Header().Set(functionStatusHeader, status)
