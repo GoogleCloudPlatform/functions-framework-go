@@ -65,7 +65,7 @@ func RegisterEventFunction(path string, fn interface{}) {
 func RegisterCloudEventFunction(path string, fn interface{}) {
 	fnCE, ok := fn.(func(cloudevents.Event))
 	if !ok {
-		log.Fatal("expected function to have signature func(cloudevents.Event), got %s", reflect.TypeOf(fn))
+		log.Fatalf("expected function to have signature func(cloudevents.Event), got %s", reflect.TypeOf(fn))
 	}
 	registerCloudEventFunction(path, fnCE, handler)
 }
