@@ -60,7 +60,7 @@ func RegisterEventFunction(path string, fn interface{}) {
 }
 
 // RegisterCloudEventFunction registers fn as an cloudevent function. The function must have one
-// arguments, a cloudevents.CloudEvent, and return an error. If fn has the wrong signature,
+// argument, a cloudevents.CloudEvent. If fn has the wrong signature,
 // RegisterCloudEventFunction logs a fatal error.
 func RegisterCloudEventFunction(path string, fn interface{}) {
 	fnCE, ok := fn.(func(cloudevents.Event))
@@ -120,13 +120,13 @@ func registerEventFunction(path string, fn interface{}, h *http.ServeMux) {
 func registerCloudEventFunction(path string, fn func(cloudevents.Event), h *http.ServeMux) {
 	p, err := cloudevents.NewHTTP()
 	if err != nil {
-		log.Fatalf("failed to create protocol: %s", err.Error())
+		log.Fatalf("failed to create protocol: %v", err)
 	}
 
 	handleFn, err := cloudevents.NewHTTPReceiveHandler(context.Background(), p, fn)
 
 	if err != nil {
-		log.Fatalf("failed to create handler: %s", err.Error())
+		log.Fatalf("failed to create handler: %v", err)
 	}
 
 	h.Handle(path, handleFn)
