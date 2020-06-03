@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"reflect"
@@ -29,6 +30,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/functions/metadata"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
 const (
@@ -37,20 +39,35 @@ const (
 	errorStatus          = "error"
 )
 
+var (
+	handler = http.DefaultServeMux
+)
+
 // RegisterHTTPFunction registers fn as an HTTP function.
 func RegisterHTTPFunction(path string, fn interface{}) {
 	fnHTTP, ok := fn.(func(http.ResponseWriter, *http.Request))
 	if !ok {
-		panic("expected function to have signature func(http.ResponseWriter, *http.Request)")
+		log.Fatalf("expected function to have signature func(http.ResponseWriter, *http.Request), got %s", reflect.TypeOf(fn))
 	}
-	registerHTTPFunction(path, fnHTTP, http.DefaultServeMux)
+	registerHTTPFunction(path, fnHTTP, handler)
 }
 
 // RegisterEventFunction registers fn as an event function. The function must have two arguments, a
 // context.Context and a struct type depending on the event, and return an error. If fn has the
-// wrong signature, RegisterEventFunction panics.
+// wrong signature, RegisterEventFunction logs a fatal error.
 func RegisterEventFunction(path string, fn interface{}) {
-	registerEventFunction(path, fn, http.DefaultServeMux)
+	registerEventFunction(path, fn, handler)
+}
+
+// RegisterCloudEventFunction registers fn as an cloudevent function. The function must have one
+// arguments, a cloudevents.CloudEvent, and return an error. If fn has the wrong signature,
+// RegisterCloudEventFunction logs a fatal error.
+func RegisterCloudEventFunction(path string, fn interface{}) {
+	fnCE, ok := fn.(func(cloudevents.Event))
+	if !ok {
+		log.Fatal("expected function to have signature func(cloudevents.Event), got %s", reflect.TypeOf(fn))
+	}
+	registerCloudEventFunction(path, fnCE, handler)
 }
 
 // Start serves an HTTP server with registered function(s).
@@ -59,7 +76,8 @@ func Start(port string) error {
 	if os.Getenv("K_SERVICE") == "" {
 		fmt.Println("Serving function...")
 	}
-	return http.ListenAndServe(":"+port, nil)
+
+	return http.ListenAndServe(":"+port, handler)
 }
 
 func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request), h *http.ServeMux) {
@@ -99,31 +117,36 @@ func registerEventFunction(path string, fn interface{}, h *http.ServeMux) {
 	})
 }
 
+func registerCloudEventFunction(path string, fn func(cloudevents.Event), h *http.ServeMux) {
+	p, err := cloudevents.NewHTTP()
+	if err != nil {
+		log.Fatalf("failed to create protocol: %s", err.Error())
+	}
+
+	handleFn, err := cloudevents.NewHTTPReceiveHandler(context.Background(), p, fn)
+
+	if err != nil {
+		log.Fatalf("failed to create handler: %s", err.Error())
+	}
+
+	h.Handle(path, handleFn)
+}
+
 func validateEventFunction(fn interface{}) {
 	ft := reflect.TypeOf(fn)
 	if ft.NumIn() != 2 {
-		panic(fmt.Sprintf("expected function to have two parameters, found %d", ft.NumIn()))
+		log.Fatalf("expected function to have two parameters, found %d", ft.NumIn())
 	}
 	var err error
 	errorType := reflect.TypeOf(&err).Elem()
 	if ft.NumOut() != 1 || !ft.Out(0).AssignableTo(errorType) {
-		panic("expected function to return only an error")
+		log.Fatalf("expected function to return only an error")
 	}
 	var ctx context.Context
 	ctxType := reflect.TypeOf(&ctx).Elem()
 	if !ctxType.AssignableTo(ft.In(0)) {
-		panic("expected first parameter to be context.Context")
+		log.Fatal("expected first parameter to be context.Context")
 	}
-}
-
-func isStructuredCloudEvent(r *http.Request) bool {
-	ceReqHeaders := []string{"Ce-Type", "Ce-Specversion", "Ce-Source", "Ce-Id"}
-	for _, h := range ceReqHeaders {
-		if _, ok := r.Header[http.CanonicalHeaderKey(h)]; ok {
-			return true
-		}
-	}
-	return false
 }
 
 func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, interface{}, error) {
@@ -167,12 +190,6 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 		return
 	}
 
-	// Structured cloud events contain the context in the header, so we need to parse that out.
-	if isStructuredCloudEvent(r) {
-		runStructuredCloudEvent(w, r, body, fn)
-		return
-	}
-
 	// Legacy cloud events (e.g. pubsub) have data and an associated metadata, so parse those and run if present.
 	if metadata, data, err := getLegacyCloudEvent(r, body); err != nil {
 		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, parsing legacy cloud event: %s", err.Error(), string(body)))
@@ -185,43 +202,6 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 	// Otherwise, we assume the body is a JSON blob containing the user-specified data structure.
 	runUserFunction(w, r, body, fn)
 	return
-}
-
-func runStructuredCloudEvent(w http.ResponseWriter, r *http.Request, body []byte, fn interface{}) {
-	// Parse the request to extract the context and the body for the data.
-	event := make(map[string]interface{})
-	event["data"] = string(body)
-	for k, v := range r.Header {
-		k = strings.ToLower(k)
-		if !strings.HasPrefix(k, "ce-") {
-			continue
-		}
-		k = strings.TrimPrefix(k, "ce-")
-		if len(v) != 1 {
-			writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Too many header values: %s", k))
-			return
-		}
-		var mapVal map[string]interface{}
-		if err := json.Unmarshal([]byte(v[0]), &mapVal); err != nil {
-			// If there's an error, represent the field as the string from the header. Errors will be caught by the event constructor if present.
-			event[k] = v[0]
-		} else {
-			// Otherwise, represent the unmarshalled map value.
-			event[k] = mapVal
-		}
-	}
-
-	// We don't want any escaping to happen here.
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	err := enc.Encode(event)
-	if err != nil {
-		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Unable to construct event %v: %s", event, err.Error()))
-		return
-	}
-
-	runUserFunction(w, r, buf.Bytes(), fn)
 }
 
 func runLegacyCloudEvent(w http.ResponseWriter, r *http.Request, m *metadata.Metadata, data, fn interface{}) {

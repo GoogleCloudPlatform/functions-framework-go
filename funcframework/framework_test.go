@@ -20,11 +20,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	cloudevents "github.com/cloudevents/sdk-go"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
 func TestHTTPFunction(t *testing.T) {
@@ -62,23 +63,6 @@ type eventData struct {
 }
 
 func TestEventFunction(t *testing.T) {
-	cloudeventsJSON := []byte(`{
-		"specversion" : "1.0",
-		"type" : "com.github.pull.create",
-		"source" : "https://github.com/cloudevents/spec/pull",
-		"subject" : "123",
-		"id" : "A234-1234-1234",
-		"time" : "2018-04-05T17:31:00Z",
-		"comexampleextension1" : "value",
-		"datacontenttype" : "text/xml",
-		"data" : "<much wow=\"xml\"/>"
-	}`)
-	var testCE cloudevents.Event
-	err := json.Unmarshal(cloudeventsJSON, &testCE)
-	if err != nil {
-		t.Fatalf("TestEventFunction: unable to create Event from JSON: %v", err)
-	}
-
 	var tests = []struct {
 		name      string
 		data      []byte
@@ -119,40 +103,6 @@ func TestEventFunction(t *testing.T) {
 			},
 			status: http.StatusInternalServerError,
 			header: "error",
-		},
-		{
-			name: "cloudevent with context from headers",
-			data: []byte("<much wow=\"xml\"/>"),
-			fn: func(c context.Context, e cloudevents.Event) error {
-				if e.String() != testCE.String() {
-					return fmt.Errorf("TestEventFunction(cloudevent with context from header): got: %v, want: %v", e, testCE)
-				}
-				return nil
-			},
-			status: http.StatusOK,
-			header: "",
-			ceHeaders: map[string]string{
-				"ce-specversion":          "1.0",
-				"ce-type":                 "com.github.pull.create",
-				"ce-source":               "https://github.com/cloudevents/spec/pull",
-				"ce-subject":              "123",
-				"ce-id":                   "A234-1234-1234",
-				"ce-time":                 "2018-04-05T17:31:00Z",
-				"ce-comexampleextension1": "value",
-				"ce-datacontenttype":      "text/xml",
-			},
-		},
-		{
-			name: "binary cloudevent request",
-			data: cloudeventsJSON,
-			fn: func(c context.Context, e cloudevents.Event) error {
-				if e.String() != testCE.String() {
-					return fmt.Errorf("TestEventFunction(binary cloudevent request): got: %v, want: %v", e, testCE)
-				}
-				return nil
-			},
-			status: http.StatusOK,
-			header: "",
 		},
 		{
 			name: "pubsub event",
@@ -219,6 +169,98 @@ func TestEventFunction(t *testing.T) {
 
 		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.data))
 		req.Header.Set("Content-Type", "application/json")
+		for k, v := range tc.ceHeaders {
+			req.Header.Set(k, v)
+		}
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Errorf("client.Do(%s): %v", tc.name, err)
+			continue
+		}
+
+		if resp.StatusCode != tc.status {
+			t.Errorf("TestEventFunction(%s): response status = %v, want %v", tc.name, resp.StatusCode, tc.status)
+			continue
+		}
+		if resp.Header.Get(functionStatusHeader) != tc.header {
+			t.Errorf("TestEventFunction(%s): response header = %s, want %s", tc.name, resp.Header.Get(functionStatusHeader), tc.header)
+			continue
+		}
+	}
+}
+
+func TestCloudEventFunction(t *testing.T) {
+	cloudeventsJSON := []byte(`{
+		"specversion" : "1.0",
+		"type" : "com.github.pull.create",
+		"source" : "https://github.com/cloudevents/spec/pull",
+		"subject" : "123",
+		"id" : "A234-1234-1234",
+		"time" : "2018-04-05T17:31:00Z",
+		"comexampleextension1" : "value",
+		"datacontenttype" : "application/xml",
+		"data" : "<much wow=\"xml\"/>"
+	}`)
+	var testCE cloudevents.Event
+	err := json.Unmarshal(cloudeventsJSON, &testCE)
+	if err != nil {
+		t.Fatalf("TestCloudEventFunction: unable to create Event from JSON: %v", err)
+	}
+
+	var tests = []struct {
+		name      string
+		data      []byte
+		fn        func(e cloudevents.Event)
+		status    int
+		header    string
+		ceHeaders map[string]string
+	}{
+		// {
+		// 	name: "binary cloudevent",
+		// 	data: []byte("<much wow=\"xml\"/>"),
+		// 	fn: func(e cloudevents.Event) {
+		// 		if e.String() != testCE.String() {
+		// 			log.Fatalf("TestCloudEventFunction(binary cloudevent): got: %v, want: %v", e, testCE)
+		// 		}
+		// 	},
+		// 	status: http.StatusOK,
+		// 	header: "",
+		// 	ceHeaders: map[string]string{
+		// 		"ce-specversion":          "1.0",
+		// 		"ce-type":                 "com.github.pull.create",
+		// 		"ce-source":               "https://github.com/cloudevents/spec/pull",
+		// 		"ce-subject":              "123",
+		// 		"ce-id":                   "A234-1234-1234",
+		// 		"ce-time":                 "2018-04-05T17:31:00Z",
+		// 		"ce-comexampleextension1": "value",
+		// 		"Content-Type":            "application/xml",
+		// 	},
+		// },
+		{
+			name: "structured cloudevent",
+			data: cloudeventsJSON,
+			fn: func(e cloudevents.Event) {
+				if e.String() != testCE.String() {
+					log.Fatalf("TestCloudEventFunction(structured cloudevent): got: %v, want: %v", e, testCE)
+				}
+			},
+			status: http.StatusOK,
+			header: "",
+			ceHeaders: map[string]string{
+				"Content-Type": "application/cloudevents+json",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		h := http.NewServeMux()
+		registerCloudEventFunction("/", tc.fn, h)
+
+		srv := httptest.NewServer(h)
+		defer srv.Close()
+
+		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.data))
 		for k, v := range tc.ceHeaders {
 			req.Header.Set(k, v)
 		}
