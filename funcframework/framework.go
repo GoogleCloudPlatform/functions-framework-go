@@ -43,12 +43,8 @@ var (
 )
 
 // RegisterHTTPFunction registers fn as an HTTP function.
-func RegisterHTTPFunction(path string, fn interface{}) error {
-	fnHTTP, ok := fn.(func(http.ResponseWriter, *http.Request))
-	if !ok {
-		return fmt.Errorf("expected function to have signature func(http.ResponseWriter, *http.Request), got %s", reflect.TypeOf(fn))
-	}
-	return registerHTTPFunction(path, fnHTTP, handler)
+func RegisterHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request)) error {
+	return registerHTTPFunction(path, fn, handler)
 }
 
 // RegisterEventFunction registers fn as an event function. The function must have two arguments, a
@@ -61,12 +57,8 @@ func RegisterEventFunction(path string, fn interface{}) error {
 // RegisterCloudEventFunction registers fn as an cloudevent function. The function must have one
 // argument, a cloudevents.CloudEvent. If fn has the wrong signature,
 // RegisterCloudEventFunction logs a fatal error.
-func RegisterCloudEventFunction(path string, fn interface{}) error {
-	fnCE, ok := fn.(func(context.Context, cloudevents.Event))
-	if !ok {
-		return fmt.Errorf("expected function to have signature func(context.Context, cloudevents.Event), got %s", reflect.TypeOf(fn))
-	}
-	return registerCloudEventFunction(path, fnCE, handler)
+func RegisterCloudEventFunction(path string, fn func(context.Context, cloudevents.Event)) error {
+	return registerCloudEventFunction(path, fn, handler)
 }
 
 // Start serves an HTTP server with registered function(s).
