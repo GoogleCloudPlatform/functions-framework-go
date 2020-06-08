@@ -179,7 +179,7 @@ and the type of second parameter needs to be a type of an unmarshallable event.
 # Enable CloudEvents
 
 The Functions Framework provides support for unmarshalling an incoming
-CloudEvents payload into a cloudevents.Event object. These will be passed as
+CloudEvents payload into a `cloudevents.Event` object. These will be passed as
 arguments to your function when it receives a request.
 
 ```golang
