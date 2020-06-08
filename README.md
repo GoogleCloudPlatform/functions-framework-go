@@ -96,7 +96,7 @@ handling logic.
 
 	func main() {
 		if err := funcframework.RegisterHTTPFunction("/", hello.HelloWorld); err != nil {
-    		log.Fatalf("funcframework.RegisterHTTPFunction: %v\n", err)
+				log.Fatalf("funcframework.RegisterHTTPFunction: %v\n", err)
 		}
 		// Use PORT environment variable, or default to 8080.
 		port := "8080"
