@@ -141,7 +141,7 @@ func validateEventFunction(fn interface{}) error {
 	return nil
 }
 
-func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, interface{}, error) {
+func getLegacyEvent(r *http.Request, body []byte) (*metadata.Metadata, interface{}, error) {
 	// Handle legacy events' "data" and "context" fields.
 	event := struct {
 		Data     interface{}        `json:"data"`
@@ -151,7 +151,7 @@ func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, inte
 		return nil, nil, err
 	}
 
-	// If there is no "data" payload, this isn't a legacy cloud event, but that's okay.
+	// If there is no "data" payload, this isn't a legacy event, but that's okay.
 	if event.Data == nil {
 		return nil, nil, nil
 	}
@@ -182,12 +182,12 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 		return
 	}
 
-	// Legacy cloud events (e.g. pubsub) have data and an associated metadata, so parse those and run if present.
-	if metadata, data, err := getLegacyCloudEvent(r, body); err != nil {
-		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, parsing legacy cloud event: %s", err.Error(), string(body)))
+	// Legacy events have data and an associated metadata, so parse those and run if present.
+	if metadata, data, err := getLegacyEvent(r, body); err != nil {
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, parsing legacy event: %s", err.Error(), string(body)))
 		return
 	} else if data != nil && metadata != nil {
-		runLegacyCloudEvent(w, r, metadata, data, fn)
+		runLegacyEvent(w, r, metadata, data, fn)
 		return
 	}
 
@@ -196,7 +196,7 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 	return
 }
 
-func runLegacyCloudEvent(w http.ResponseWriter, r *http.Request, m *metadata.Metadata, data, fn interface{}) {
+func runLegacyEvent(w http.ResponseWriter, r *http.Request, m *metadata.Metadata, data, fn interface{}) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
