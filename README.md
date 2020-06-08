@@ -95,7 +95,9 @@ handling logic.
 	)
 
 	func main() {
-		funcframework.RegisterHTTPFunction("/", hello.HelloWorld)
+		if err := funcframework.RegisterHTTPFunction("/", hello.HelloWorld); err != nil {
+      log.Fatalf("funcframework.RegisterHTTPFunction: %v\n", err)
+    }
 		// Use PORT environment variable, or default to 8080.
 		port := "8080"
 		if envPort := os.Getenv("PORT"); envPort != "" {
@@ -176,7 +178,7 @@ and the type of second parameter needs to be a type of an unmarshallable event.
 
 # Enable Cloud Events
 
-The Functions Framework can unmarshal to custom structs, and provides support for 
+The Functions Framework can unmarshal to custom structs, and provides support for
 unmarshalling an incoming [CloudEvents](http://cloudevents.io) payload to a
 `cloudevents.Event` object. These will be passed as arguments to your function when it receives a request.
 Note that your function must use the event-style function signature.

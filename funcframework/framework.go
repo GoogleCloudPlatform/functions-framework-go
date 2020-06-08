@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"reflect"
@@ -44,30 +43,30 @@ var (
 )
 
 // RegisterHTTPFunction registers fn as an HTTP function.
-func RegisterHTTPFunction(path string, fn interface{}) {
+func RegisterHTTPFunction(path string, fn interface{}) error {
 	fnHTTP, ok := fn.(func(http.ResponseWriter, *http.Request))
 	if !ok {
-		log.Fatalf("expected function to have signature func(http.ResponseWriter, *http.Request), got %s", reflect.TypeOf(fn))
+		return fmt.Errorf("expected function to have signature func(http.ResponseWriter, *http.Request), got %s", reflect.TypeOf(fn))
 	}
-	registerHTTPFunction(path, fnHTTP, handler)
+	return registerHTTPFunction(path, fnHTTP, handler)
 }
 
 // RegisterEventFunction registers fn as an event function. The function must have two arguments, a
 // context.Context and a struct type depending on the event, and return an error. If fn has the
 // wrong signature, RegisterEventFunction logs a fatal error.
-func RegisterEventFunction(path string, fn interface{}) {
-	registerEventFunction(path, fn, handler)
+func RegisterEventFunction(path string, fn interface{}) error {
+	return registerEventFunction(path, fn, handler)
 }
 
 // RegisterCloudEventFunction registers fn as an cloudevent function. The function must have one
 // argument, a cloudevents.CloudEvent. If fn has the wrong signature,
 // RegisterCloudEventFunction logs a fatal error.
-func RegisterCloudEventFunction(path string, fn interface{}) {
-	fnCE, ok := fn.(func(cloudevents.Event))
+func RegisterCloudEventFunction(path string, fn interface{}) error {
+	fnCE, ok := fn.(func(context.Context, cloudevents.Event))
 	if !ok {
-		log.Fatalf("expected function to have signature func(cloudevents.Event), got %s", reflect.TypeOf(fn))
+		return fmt.Errorf("expected function to have signature func(context.Context, cloudevents.Event), got %s", reflect.TypeOf(fn))
 	}
-	registerCloudEventFunction(path, fnCE, handler)
+	return registerCloudEventFunction(path, fnCE, handler)
 }
 
 // Start serves an HTTP server with registered function(s).
@@ -80,7 +79,7 @@ func Start(port string) error {
 	return http.ListenAndServe(":"+port, handler)
 }
 
-func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request), h *http.ServeMux) {
+func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request), h *http.ServeMux) error {
 	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		// TODO(b/111823046): Remove following once Cloud Functions does not need flushing the logs anymore.
 		// Force flush of logs after every function trigger.
@@ -93,15 +92,13 @@ func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Reques
 		}()
 		fn(w, r)
 	})
+	return nil
 }
 
-func registerEventFunction(path string, fn interface{}, h *http.ServeMux) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "Validation panic: %v\n\n%s", r, debug.Stack())
-		}
-	}()
-	validateEventFunction(fn)
+func registerEventFunction(path string, fn interface{}, h *http.ServeMux) error {
+	err := validateEventFunction(fn)
+	if err != nil {
+	}
 	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		if os.Getenv("K_SERVICE") != "" {
 			// Force flush of logs after every function trigger when running on GCF.
@@ -115,38 +112,41 @@ func registerEventFunction(path string, fn interface{}, h *http.ServeMux) {
 		}()
 		handleEventFunction(w, r, fn)
 	})
+	return nil
 }
 
-func registerCloudEventFunction(path string, fn func(cloudevents.Event), h *http.ServeMux) {
+func registerCloudEventFunction(path string, fn func(context.Context, cloudevents.Event), h *http.ServeMux) error {
 	p, err := cloudevents.NewHTTP()
 	if err != nil {
-		log.Fatalf("failed to create protocol: %v", err)
+		return fmt.Errorf("failed to create protocol: %v", err)
 	}
 
 	handleFn, err := cloudevents.NewHTTPReceiveHandler(context.Background(), p, fn)
 
 	if err != nil {
-		log.Fatalf("failed to create handler: %v", err)
+		return fmt.Errorf("failed to create handler: %v", err)
 	}
 
 	h.Handle(path, handleFn)
+	return nil
 }
 
-func validateEventFunction(fn interface{}) {
+func validateEventFunction(fn interface{}) error {
 	ft := reflect.TypeOf(fn)
 	if ft.NumIn() != 2 {
-		log.Fatalf("expected function to have two parameters, found %d", ft.NumIn())
+		return fmt.Errorf("expected function to have two parameters, found %d", ft.NumIn())
 	}
 	var err error
 	errorType := reflect.TypeOf(&err).Elem()
 	if ft.NumOut() != 1 || !ft.Out(0).AssignableTo(errorType) {
-		log.Fatalf("expected function to return only an error")
+		return fmt.Errorf("expected function to return only an error")
 	}
 	var ctx context.Context
 	ctxType := reflect.TypeOf(&ctx).Elem()
 	if !ctxType.AssignableTo(ft.In(0)) {
-		log.Fatal("expected first parameter to be context.Context")
+		return fmt.Errorf("expected first parameter to be context.Context")
 	}
+	return nil
 }
 
 func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, interface{}, error) {

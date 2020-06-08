@@ -29,9 +29,11 @@ import (
 
 func TestHTTPFunction(t *testing.T) {
 	h := http.NewServeMux()
-	registerHTTPFunction("/", func(w http.ResponseWriter, r *http.Request) {
+	if err := registerHTTPFunction("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
-	}, h)
+	}, h); err != nil {
+		t.Fatalf("registerHTTPFunction(): %v", err)
+	}
 
 	srv := httptest.NewServer(h)
 	defer srv.Close()
@@ -161,7 +163,9 @@ func TestEventFunction(t *testing.T) {
 
 	for _, tc := range tests {
 		h := http.NewServeMux()
-		registerEventFunction("/", tc.fn, h)
+		if err := registerEventFunction("/", tc.fn, h); err != nil {
+			t.Fatalf("registerEventFunction(): %v", err)
+		}
 
 		srv := httptest.NewServer(h)
 		defer srv.Close()
@@ -210,7 +214,7 @@ func TestCloudEventFunction(t *testing.T) {
 	var tests = []struct {
 		name      string
 		data      []byte
-		fn        func(e cloudevents.Event)
+		fn        func(context.Context, cloudevents.Event)
 		status    int
 		header    string
 		ceHeaders map[string]string
@@ -218,7 +222,7 @@ func TestCloudEventFunction(t *testing.T) {
 		{
 			name: "binary cloudevent",
 			data: []byte("<much wow=\"xml\"/>"),
-			fn: func(e cloudevents.Event) {
+			fn: func(ctx context.Context, e cloudevents.Event) {
 				if e.String() != testCE.String() {
 					t.Errorf("TestCloudEventFunction(binary cloudevent): got: %v, want: %v", e, testCE)
 				}
@@ -239,7 +243,7 @@ func TestCloudEventFunction(t *testing.T) {
 		{
 			name: "structured cloudevent",
 			data: cloudeventsJSON,
-			fn: func(e cloudevents.Event) {
+			fn: func(ctx context.Context, e cloudevents.Event) {
 				if e.String() != testCE.String() {
 					t.Fatalf("TestCloudEventFunction(structured cloudevent): got: %v, want: %v", e, testCE)
 				}
@@ -254,7 +258,9 @@ func TestCloudEventFunction(t *testing.T) {
 
 	for _, tc := range tests {
 		h := http.NewServeMux()
-		registerCloudEventFunction("/", tc.fn, h)
+		if err := registerCloudEventFunction("/", tc.fn, h); err != nil {
+			t.Fatalf("registerCloudEventFunction(): %v", err)
+		}
 
 		srv := httptest.NewServer(h)
 		defer srv.Close()
