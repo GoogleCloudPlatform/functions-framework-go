@@ -54,9 +54,7 @@ func RegisterEventFunction(path string, fn interface{}) error {
 	return registerEventFunction(path, fn, handler)
 }
 
-// RegisterCloudEventFunction registers fn as an cloudevent function. The function must have one
-// argument, a cloudevents.CloudEvent. If fn has the wrong signature,
-// RegisterCloudEventFunction logs a fatal error.
+// RegisterCloudEventFunction registers fn as an cloudevent function.
 func RegisterCloudEventFunction(path string, fn func(context.Context, cloudevents.Event)) error {
 	return registerCloudEventFunction(path, fn, handler)
 }
@@ -90,6 +88,7 @@ func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Reques
 func registerEventFunction(path string, fn interface{}, h *http.ServeMux) error {
 	err := validateEventFunction(fn)
 	if err != nil {
+		return err
 	}
 	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		if os.Getenv("K_SERVICE") != "" {
