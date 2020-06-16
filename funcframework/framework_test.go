@@ -257,8 +257,9 @@ func TestCloudEventFunction(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		ctx := context.Background()
 		h := http.NewServeMux()
-		if err := registerCloudEventFunction("/", tc.fn, h); err != nil {
+		if err := registerCloudEventFunction(ctx, "/", tc.fn, h); err != nil {
 			t.Fatalf("registerCloudEventFunction(): %v", err)
 		}
 

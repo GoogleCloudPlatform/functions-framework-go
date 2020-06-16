@@ -55,8 +55,8 @@ func RegisterEventFunction(path string, fn interface{}) error {
 }
 
 // RegisterCloudEventFunction registers fn as an cloudevent function.
-func RegisterCloudEventFunction(path string, fn func(context.Context, cloudevents.Event)) error {
-	return registerCloudEventFunction(path, fn, handler)
+func RegisterCloudEventFunction(ctx context.Context, path string, fn func(context.Context, cloudevents.Event)) error {
+	return registerCloudEventFunction(ctx, path, fn, handler)
 }
 
 // Start serves an HTTP server with registered function(s).
@@ -106,13 +106,13 @@ func registerEventFunction(path string, fn interface{}, h *http.ServeMux) error 
 	return nil
 }
 
-func registerCloudEventFunction(path string, fn func(context.Context, cloudevents.Event), h *http.ServeMux) error {
+func registerCloudEventFunction(ctx context.Context, path string, fn func(context.Context, cloudevents.Event), h *http.ServeMux) error {
 	p, err := cloudevents.NewHTTP()
 	if err != nil {
 		return fmt.Errorf("failed to create protocol: %v", err)
 	}
 
-	handleFn, err := cloudevents.NewHTTPReceiveHandler(context.Background(), p, fn)
+	handleFn, err := cloudevents.NewHTTPReceiveHandler(ctx, p, fn)
 
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %v", err)
