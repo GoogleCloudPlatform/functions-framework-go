@@ -49,7 +49,7 @@ func RegisterHTTPFunction(path string, fn func(http.ResponseWriter, *http.Reques
 
 // RegisterEventFunction registers fn as an event function. The function must have two arguments, a
 // context.Context and a struct type depending on the event, and return an error. If fn has the
-// wrong signature, RegisterEventFunction logs a fatal error.
+// wrong signature, RegisterEventFunction returns an error.
 func RegisterEventFunction(path string, fn interface{}) error {
 	return registerEventFunction(path, fn, handler)
 }
