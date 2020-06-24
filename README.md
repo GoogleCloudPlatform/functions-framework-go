@@ -95,9 +95,7 @@ handling logic.
 	)
 
 	func main() {
-		if err := funcframework.RegisterHTTPFunction("/", hello.HelloWorld); err != nil {
-			log.Fatalf("funcframework.RegisterHTTPFunction: %v\n", err)
-		}
+		funcframework.RegisterHTTPFunction("/", hello.HelloWorld)
 		// Use PORT environment variable, or default to 8080.
 		port := "8080"
 		if envPort := os.Getenv("PORT"); envPort != "" {
@@ -176,11 +174,12 @@ func eventFunction(ctx context.Context, e myEventType){
 > Note that the first parameter to a function that handles events has to be `context.Context`
 and the type of second parameter needs to be a type of an unmarshallable event.
 
-# Enable CloudEvents
+# Enable Cloud Events
 
-The Functions Framework provides support for unmarshalling an incoming
-CloudEvents payload into a `cloudevents.Event` object. These will be passed as
-arguments to your function when it receives a request.
+The Functions Framework can unmarshal to custom structs, and provides support for 
+unmarshalling an incoming [CloudEvents](http://cloudevents.io) payload to a
+`cloudevents.Event` object. These will be passed as arguments to your function when it receives a request.
+Note that your function must use the event-style function signature.
 
 ```golang
 func CloudEventsFunction(ctx context.Context, e cloudevents.Event) {
