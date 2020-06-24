@@ -29,7 +29,6 @@ import (
 	"strings"
 
 	"cloud.google.com/go/functions/metadata"
-	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
 const (
@@ -38,25 +37,20 @@ const (
 	errorStatus          = "error"
 )
 
-var (
-	handler = http.DefaultServeMux
-)
-
 // RegisterHTTPFunction registers fn as an HTTP function.
-func RegisterHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request)) error {
-	return registerHTTPFunction(path, fn, handler)
+func RegisterHTTPFunction(path string, fn interface{}) {
+	fnHTTP, ok := fn.(func(http.ResponseWriter, *http.Request))
+	if !ok {
+		panic("expected function to have signature func(http.ResponseWriter, *http.Request)")
+	}
+	registerHTTPFunction(path, fnHTTP, http.DefaultServeMux)
 }
 
 // RegisterEventFunction registers fn as an event function. The function must have two arguments, a
 // context.Context and a struct type depending on the event, and return an error. If fn has the
-// wrong signature, RegisterEventFunction returns an error.
-func RegisterEventFunction(path string, fn interface{}) error {
-	return registerEventFunction(path, fn, handler)
-}
-
-// RegisterCloudEventFunction registers fn as an cloudevent function.
-func RegisterCloudEventFunction(ctx context.Context, path string, fn func(context.Context, cloudevents.Event)) error {
-	return registerCloudEventFunction(ctx, path, fn, handler)
+// wrong signature, RegisterEventFunction panics.
+func RegisterEventFunction(path string, fn interface{}) {
+	registerEventFunction(path, fn, http.DefaultServeMux)
 }
 
 // Start serves an HTTP server with registered function(s).
@@ -65,11 +59,10 @@ func Start(port string) error {
 	if os.Getenv("K_SERVICE") == "" {
 		fmt.Println("Serving function...")
 	}
-
-	return http.ListenAndServe(":"+port, handler)
+	return http.ListenAndServe(":"+port, nil)
 }
 
-func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request), h *http.ServeMux) error {
+func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request), h *http.ServeMux) {
 	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		// TODO(b/111823046): Remove following once Cloud Functions does not need flushing the logs anymore.
 		// Force flush of logs after every function trigger.
@@ -82,14 +75,15 @@ func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Reques
 		}()
 		fn(w, r)
 	})
-	return nil
 }
 
-func registerEventFunction(path string, fn interface{}, h *http.ServeMux) error {
-	err := validateEventFunction(fn)
-	if err != nil {
-		return err
-	}
+func registerEventFunction(path string, fn interface{}, h *http.ServeMux) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Validation panic: %v\n\n%s", r, debug.Stack())
+		}
+	}()
+	validateEventFunction(fn)
 	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		if os.Getenv("K_SERVICE") != "" {
 			// Force flush of logs after every function trigger when running on GCF.
@@ -103,44 +97,36 @@ func registerEventFunction(path string, fn interface{}, h *http.ServeMux) error 
 		}()
 		handleEventFunction(w, r, fn)
 	})
-	return nil
 }
 
-func registerCloudEventFunction(ctx context.Context, path string, fn func(context.Context, cloudevents.Event), h *http.ServeMux) error {
-	p, err := cloudevents.NewHTTP()
-	if err != nil {
-		return fmt.Errorf("failed to create protocol: %v", err)
-	}
-
-	handleFn, err := cloudevents.NewHTTPReceiveHandler(ctx, p, fn)
-
-	if err != nil {
-		return fmt.Errorf("failed to create handler: %v", err)
-	}
-
-	h.Handle(path, handleFn)
-	return nil
-}
-
-func validateEventFunction(fn interface{}) error {
+func validateEventFunction(fn interface{}) {
 	ft := reflect.TypeOf(fn)
 	if ft.NumIn() != 2 {
-		return fmt.Errorf("expected function to have two parameters, found %d", ft.NumIn())
+		panic(fmt.Sprintf("expected function to have two parameters, found %d", ft.NumIn()))
 	}
 	var err error
 	errorType := reflect.TypeOf(&err).Elem()
 	if ft.NumOut() != 1 || !ft.Out(0).AssignableTo(errorType) {
-		return fmt.Errorf("expected function to return only an error")
+		panic("expected function to return only an error")
 	}
 	var ctx context.Context
 	ctxType := reflect.TypeOf(&ctx).Elem()
 	if !ctxType.AssignableTo(ft.In(0)) {
-		return fmt.Errorf("expected first parameter to be context.Context")
+		panic("expected first parameter to be context.Context")
 	}
-	return nil
 }
 
-func getLegacyEvent(r *http.Request, body []byte) (*metadata.Metadata, interface{}, error) {
+func isStructuredCloudEvent(r *http.Request) bool {
+	ceReqHeaders := []string{"Ce-Type", "Ce-Specversion", "Ce-Source", "Ce-Id"}
+	for _, h := range ceReqHeaders {
+		if _, ok := r.Header[http.CanonicalHeaderKey(h)]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, interface{}, error) {
 	// Handle legacy events' "data" and "context" fields.
 	event := struct {
 		Data     interface{}        `json:"data"`
@@ -150,7 +136,7 @@ func getLegacyEvent(r *http.Request, body []byte) (*metadata.Metadata, interface
 		return nil, nil, err
 	}
 
-	// If there is no "data" payload, this isn't a legacy event, but that's okay.
+	// If there is no "data" payload, this isn't a legacy cloud event, but that's okay.
 	if event.Data == nil {
 		return nil, nil, nil
 	}
@@ -181,12 +167,18 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 		return
 	}
 
-	// Legacy events have data and an associated metadata, so parse those and run if present.
-	if metadata, data, err := getLegacyEvent(r, body); err != nil {
-		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, parsing legacy event: %s", err.Error(), string(body)))
+	// Structured cloud events contain the context in the header, so we need to parse that out.
+	if isStructuredCloudEvent(r) {
+		runStructuredCloudEvent(w, r, body, fn)
+		return
+	}
+
+	// Legacy cloud events (e.g. pubsub) have data and an associated metadata, so parse those and run if present.
+	if metadata, data, err := getLegacyCloudEvent(r, body); err != nil {
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, parsing legacy cloud event: %s", err.Error(), string(body)))
 		return
 	} else if data != nil && metadata != nil {
-		runLegacyEvent(w, r, metadata, data, fn)
+		runLegacyCloudEvent(w, r, metadata, data, fn)
 		return
 	}
 
@@ -195,7 +187,44 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 	return
 }
 
-func runLegacyEvent(w http.ResponseWriter, r *http.Request, m *metadata.Metadata, data, fn interface{}) {
+func runStructuredCloudEvent(w http.ResponseWriter, r *http.Request, body []byte, fn interface{}) {
+	// Parse the request to extract the context and the body for the data.
+	event := make(map[string]interface{})
+	event["data"] = string(body)
+	for k, v := range r.Header {
+		k = strings.ToLower(k)
+		if !strings.HasPrefix(k, "ce-") {
+			continue
+		}
+		k = strings.TrimPrefix(k, "ce-")
+		if len(v) != 1 {
+			writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Too many header values: %s", k))
+			return
+		}
+		var mapVal map[string]interface{}
+		if err := json.Unmarshal([]byte(v[0]), &mapVal); err != nil {
+			// If there's an error, represent the field as the string from the header. Errors will be caught by the event constructor if present.
+			event[k] = v[0]
+		} else {
+			// Otherwise, represent the unmarshalled map value.
+			event[k] = mapVal
+		}
+	}
+
+	// We don't want any escaping to happen here.
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	err := enc.Encode(event)
+	if err != nil {
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Unable to construct event %v: %s", event, err.Error()))
+		return
+	}
+
+	runUserFunction(w, r, buf.Bytes(), fn)
+}
+
+func runLegacyCloudEvent(w http.ResponseWriter, r *http.Request, m *metadata.Metadata, data, fn interface{}) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
