@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/conformance-tests/function"
-	"github.com/GoogleCloudPlatform/functions-framework-go/function"
+	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 )
 
 func main() {

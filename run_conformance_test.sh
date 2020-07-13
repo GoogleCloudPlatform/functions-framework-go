@@ -9,7 +9,7 @@ go run github.com/GoogleCloudPlatform/functions-framework-conformance/client \
   -cmd "go run conformance-tests/http/main.go" \
   -type "http" \
 
-# Validate HTTP
+# Validate legacy events
 go run github.com/GoogleCloudPlatform/functions-framework-conformance/client \
   -cmd "go run conformance-tests/event/main.go" \
   -type "legacyevent" \
