@@ -10,7 +10,6 @@ import (
 )
 
 func main() {
-	log.Print("registering...")
 	funcframework.RegisterHTTPFunction("/", function.HTTP)
 
 	// Use PORT environment variable, or default to 8080.
