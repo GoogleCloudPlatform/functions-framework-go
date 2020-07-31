@@ -37,13 +37,25 @@ func LegacyEvent(ctx context.Context, data interface{}) error {
 	if err != nil {
 		return fmt.Errorf("getting context metadata: %v", err)
 	}
-	event := struct {
-		data    interface{}
-		context *metadata.Metadata
-	}{
-		data:    data,
-		context: m,
+
+	c := map[string]interface{}{
+		"eventId":   m.EventID,
+		"eventType": m.EventType,
+		"timestamp": m.Timestamp,
 	}
+
+	if m.Resource.RawPath != "" {
+		fmt.Printf("no raw path: %+v", m.Resource)
+		c["resource"] = m.Resource.RawPath
+	} else {
+		c["resource"] = m.Resource
+	}
+
+	event := map[string]interface{}{
+		"data":    data,
+		"context": c,
+	}
+
 	e, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("marshalling event: %v", err)

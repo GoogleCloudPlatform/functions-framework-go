@@ -236,6 +236,11 @@ func runLegacyEvent(w http.ResponseWriter, r *http.Request, m *metadata.Metadata
 		return
 	}
 	ctx := metadata.NewContext(r.Context(), m)
+	me, err := metadata.FromContext(ctx)
+	if err != nil {
+		fmt.Printf("%v", err)
+	}
+	fmt.Printf("%v vs %v", m.Resource, me.Resource)
 	runUserFunctionWithContext(ctx, w, r, buf.Bytes(), fn)
 }
 
