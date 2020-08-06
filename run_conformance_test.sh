@@ -4,10 +4,10 @@ set -e
 
 go install github.com/GoogleCloudPlatform/functions-framework-conformance/client
 
-# # Validate HTTP
-# go run github.com/GoogleCloudPlatform/functions-framework-conformance/client \
-#   -cmd "go run conformance-tests/http/main.go" \
-#   -type "http" \
+# Validate HTTP
+go run github.com/GoogleCloudPlatform/functions-framework-conformance/client \
+  -cmd "go run conformance-tests/http/main.go" \
+  -type "http" \
 
 # Validate legacy events
 go run github.com/GoogleCloudPlatform/functions-framework-conformance/client \
