@@ -14,6 +14,4 @@ script:
 - go test -v ./...
 - go vet ./...
 - find . -not \( \( -wholename './.git' -o -wholename '*/vendor/*' \) -prune \) -name '*.go' | xargs gofmt -s -d
-- ./run_http_conformance_test.sh
-- ./run_event_conformance_test.sh
-- ./run_cloudevent_conformance_test.sh
+- ./run_conformance_test.sh
