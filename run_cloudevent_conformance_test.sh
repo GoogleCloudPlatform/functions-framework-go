@@ -4,10 +4,9 @@ set -e
 
 go install github.com/GoogleCloudPlatform/functions-framework-conformance/client
 
-# Validate legacy events
 go run github.com/GoogleCloudPlatform/functions-framework-conformance/client \
-  -cmd "go run conformance-tests/event/main.go" \
-  -type "legacyevent" \
+  -cmd "go run conformance-tests/cloudevent/main.go" \
+  -type "cloudevent" \
   -validate-mapping=false
 
 # Clean up.

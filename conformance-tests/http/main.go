@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -10,7 +11,10 @@ import (
 )
 
 func main() {
-	funcframework.RegisterHTTPFunction("/", function.HTTP)
+	ctx := context.Background()
+	if err := funcframework.RegisterHTTPFunction("/", function.HTTP); err != nil {
+		log.Fatalf("funcframework.RegisterHTTPFunction: %v\n", err)
+	}
 
 	// Use PORT environment variable, or default to 8080.
 	port := "8080"

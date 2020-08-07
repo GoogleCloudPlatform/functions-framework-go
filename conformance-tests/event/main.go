@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -10,7 +11,10 @@ import (
 )
 
 func main() {
-	funcframework.RegisterEventFunction("/", function.LegacyEvent)
+	ctx := context.Background()
+	if err := funcframework.RegisterEventFunctionContext(ctx, "/", function.LegacyEvent); err != nil {
+		log.Fatalf("funcframework.RegisterEventFunctionContext: %v\n", err)
+	}
 	// Use PORT environment variable, or default to 8080.
 	port := "8080"
 	if envPort := os.Getenv("PORT"); envPort != "" {
