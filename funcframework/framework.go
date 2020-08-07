@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/functions/metadata"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
 const (
@@ -37,20 +38,64 @@ const (
 	errorStatus          = "error"
 )
 
+var (
+	handler = http.DefaultServeMux
+)
+
+func recoverPanic(msg string) {
+	if r := recover(); r != nil {
+		fmt.Fprintf(os.Stderr, "%s: %v\n\n%s", msg, r, debug.Stack())
+	}
+}
+
+func recoverPanicHTTP(w http.ResponseWriter, msg string) {
+	if r := recover(); r != nil {
+		writeHTTPErrorResponse(w, http.StatusInternalServerError, crashStatus, fmt.Sprintf("%s: %v\n\n%s", msg, r, debug.Stack()))
+	}
+}
+
 // RegisterHTTPFunction registers fn as an HTTP function.
+// Maintained for backward compatibility. Please use RegisterHTTPFunctionContext instead.
 func RegisterHTTPFunction(path string, fn interface{}) {
+	defer recoverPanic("Registration panic")
+
 	fnHTTP, ok := fn.(func(http.ResponseWriter, *http.Request))
+
 	if !ok {
 		panic("expected function to have signature func(http.ResponseWriter, *http.Request)")
 	}
-	registerHTTPFunction(path, fnHTTP, http.DefaultServeMux)
+
+	ctx := context.Background()
+	if err := RegisterHTTPFunctionContext(ctx, path, fnHTTP); err != nil {
+		panic(fmt.Sprintf("unexpected error in RegisterEventFunctionContext: %v", err))
+	}
 }
 
-// RegisterEventFunction registers fn as an event function. The function must have two arguments, a
-// context.Context and a struct type depending on the event, and return an error. If fn has the
-// wrong signature, RegisterEventFunction panics.
+// RegisterEventFunction registers fn as an event function.
+// Maintained for backward compatibility. Please use RegisterEventFunctionContext instead.
 func RegisterEventFunction(path string, fn interface{}) {
-	registerEventFunction(path, fn, http.DefaultServeMux)
+	defer recoverPanic("Registration panic")
+	ctx := context.Background()
+	if err := RegisterEventFunctionContext(ctx, path, fn); err != nil {
+		panic(fmt.Sprintf("unexpected error in RegisterEventFunctionContext: %v", err))
+	}
+}
+
+// RegisterHTTPFunctionContext registers fn as an HTTP function.
+func RegisterHTTPFunctionContext(ctx context.Context, path string, fn func(http.ResponseWriter, *http.Request)) error {
+	return registerHTTPFunction(path, fn, handler)
+}
+
+// RegisterEventFunctionContext registers fn as an event function. The function must have two arguments, a
+// context.Context and a struct type depending on the event, and return an error. If fn has the
+// wrong signature, RegisterEventFunction returns an error.
+func RegisterEventFunctionContext(ctx context.Context, path string, fn interface{}) error {
+	return registerEventFunction(path, fn, handler)
+}
+
+// RegisterCloudEventFunctionContext registers fn as an cloudevent function.
+func RegisterCloudEventFunctionContext(ctx context.Context, path string, fn func(context.Context, cloudevents.Event)) error {
+	return registerCloudEventFunction(ctx, path, fn, handler)
 }
 
 // Start serves an HTTP server with registered function(s).
@@ -59,74 +104,75 @@ func Start(port string) error {
 	if os.Getenv("K_SERVICE") == "" {
 		fmt.Println("Serving function...")
 	}
-	return http.ListenAndServe(":"+port, nil)
+
+	return http.ListenAndServe(":"+port, handler)
 }
 
-func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request), h *http.ServeMux) {
+func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request), h *http.ServeMux) error {
 	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		// TODO(b/111823046): Remove following once Cloud Functions does not need flushing the logs anymore.
 		// Force flush of logs after every function trigger.
 		defer fmt.Println()
 		defer fmt.Fprintln(os.Stderr)
-		defer func() {
-			if r := recover(); r != nil {
-				writeHTTPErrorResponse(w, http.StatusInternalServerError, crashStatus, fmt.Sprintf("Function panic: %v\n\n%s", r, debug.Stack()))
-			}
-		}()
+		defer recoverPanicHTTP(w, "Function panic")
 		fn(w, r)
 	})
+	return nil
 }
 
-func registerEventFunction(path string, fn interface{}, h *http.ServeMux) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "Validation panic: %v\n\n%s", r, debug.Stack())
-		}
-	}()
-	validateEventFunction(fn)
+func registerEventFunction(path string, fn interface{}, h *http.ServeMux) error {
+	err := validateEventFunction(fn)
+	if err != nil {
+		return err
+	}
 	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		if os.Getenv("K_SERVICE") != "" {
 			// Force flush of logs after every function trigger when running on GCF.
 			defer fmt.Println()
 			defer fmt.Fprintln(os.Stderr)
 		}
-		defer func() {
-			if r := recover(); r != nil {
-				writeHTTPErrorResponse(w, http.StatusInternalServerError, crashStatus, fmt.Sprintf("Function panic: %v\n\n%s", r, debug.Stack()))
-			}
-		}()
+		defer recoverPanicHTTP(w, "Function panic")
+
 		handleEventFunction(w, r, fn)
 	})
+	return nil
 }
 
-func validateEventFunction(fn interface{}) {
+func registerCloudEventFunction(ctx context.Context, path string, fn func(context.Context, cloudevents.Event), h *http.ServeMux) error {
+	p, err := cloudevents.NewHTTP()
+	if err != nil {
+		return fmt.Errorf("failed to create protocol: %v", err)
+	}
+
+	handleFn, err := cloudevents.NewHTTPReceiveHandler(ctx, p, fn)
+
+	if err != nil {
+		return fmt.Errorf("failed to create handler: %v", err)
+	}
+
+	h.Handle(path, handleFn)
+	return nil
+}
+
+func validateEventFunction(fn interface{}) error {
 	ft := reflect.TypeOf(fn)
 	if ft.NumIn() != 2 {
-		panic(fmt.Sprintf("expected function to have two parameters, found %d", ft.NumIn()))
+		return fmt.Errorf("expected function to have two parameters, found %d", ft.NumIn())
 	}
 	var err error
 	errorType := reflect.TypeOf(&err).Elem()
 	if ft.NumOut() != 1 || !ft.Out(0).AssignableTo(errorType) {
-		panic("expected function to return only an error")
+		return fmt.Errorf("expected function to return only an error")
 	}
 	var ctx context.Context
 	ctxType := reflect.TypeOf(&ctx).Elem()
 	if !ctxType.AssignableTo(ft.In(0)) {
-		panic("expected first parameter to be context.Context")
+		return fmt.Errorf("expected first parameter to be context.Context")
 	}
+	return nil
 }
 
-func isStructuredCloudEvent(r *http.Request) bool {
-	ceReqHeaders := []string{"Ce-Type", "Ce-Specversion", "Ce-Source", "Ce-Id"}
-	for _, h := range ceReqHeaders {
-		if _, ok := r.Header[http.CanonicalHeaderKey(h)]; ok {
-			return true
-		}
-	}
-	return false
-}
-
-func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, interface{}, error) {
+func getLegacyEvent(r *http.Request, body []byte) (*metadata.Metadata, interface{}, error) {
 	// Handle legacy events' "data" and "context" fields.
 	event := struct {
 		Data     interface{}        `json:"data"`
@@ -136,7 +182,7 @@ func getLegacyCloudEvent(r *http.Request, body []byte) (*metadata.Metadata, inte
 		return nil, nil, err
 	}
 
-	// If there is no "data" payload, this isn't a legacy cloud event, but that's okay.
+	// If there is no "data" payload, this isn't a legacy event, but that's okay.
 	if event.Data == nil {
 		return nil, nil, nil
 	}
@@ -167,18 +213,12 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 		return
 	}
 
-	// Structured cloud events contain the context in the header, so we need to parse that out.
-	if isStructuredCloudEvent(r) {
-		runStructuredCloudEvent(w, r, body, fn)
-		return
-	}
-
-	// Legacy cloud events (e.g. pubsub) have data and an associated metadata, so parse those and run if present.
-	if metadata, data, err := getLegacyCloudEvent(r, body); err != nil {
-		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, parsing legacy cloud event: %s", err.Error(), string(body)))
+	// Legacy events have data and an associated metadata, so parse those and run if present.
+	if metadata, data, err := getLegacyEvent(r, body); err != nil {
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, parsing legacy event: %s", err.Error(), string(body)))
 		return
 	} else if data != nil && metadata != nil {
-		runLegacyCloudEvent(w, r, metadata, data, fn)
+		runLegacyEvent(w, r, metadata, data, fn)
 		return
 	}
 
@@ -187,44 +227,7 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 	return
 }
 
-func runStructuredCloudEvent(w http.ResponseWriter, r *http.Request, body []byte, fn interface{}) {
-	// Parse the request to extract the context and the body for the data.
-	event := make(map[string]interface{})
-	event["data"] = string(body)
-	for k, v := range r.Header {
-		k = strings.ToLower(k)
-		if !strings.HasPrefix(k, "ce-") {
-			continue
-		}
-		k = strings.TrimPrefix(k, "ce-")
-		if len(v) != 1 {
-			writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Too many header values: %s", k))
-			return
-		}
-		var mapVal map[string]interface{}
-		if err := json.Unmarshal([]byte(v[0]), &mapVal); err != nil {
-			// If there's an error, represent the field as the string from the header. Errors will be caught by the event constructor if present.
-			event[k] = v[0]
-		} else {
-			// Otherwise, represent the unmarshalled map value.
-			event[k] = mapVal
-		}
-	}
-
-	// We don't want any escaping to happen here.
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	err := enc.Encode(event)
-	if err != nil {
-		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Unable to construct event %v: %s", event, err.Error()))
-		return
-	}
-
-	runUserFunction(w, r, buf.Bytes(), fn)
-}
-
-func runLegacyCloudEvent(w http.ResponseWriter, r *http.Request, m *metadata.Metadata, data, fn interface{}) {
+func runLegacyEvent(w http.ResponseWriter, r *http.Request, m *metadata.Metadata, data, fn interface{}) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
@@ -233,6 +236,11 @@ func runLegacyCloudEvent(w http.ResponseWriter, r *http.Request, m *metadata.Met
 		return
 	}
 	ctx := metadata.NewContext(r.Context(), m)
+	me, err := metadata.FromContext(ctx)
+	if err != nil {
+		fmt.Printf("%v", err)
+	}
+	fmt.Printf("%v vs %v", m.Resource, me.Resource)
 	runUserFunctionWithContext(ctx, w, r, buf.Bytes(), fn)
 }
 

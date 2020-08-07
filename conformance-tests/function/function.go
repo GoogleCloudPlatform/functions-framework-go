@@ -38,17 +38,18 @@ func LegacyEvent(ctx context.Context, data interface{}) error {
 		return fmt.Errorf("getting context metadata: %v", err)
 	}
 	event := struct {
-		data    interface{}
-		context *metadata.Metadata
+		Data    interface{}        `json:"data"`
+		Context *metadata.Metadata `json:"context"`
 	}{
-		data:    data,
-		context: m,
+		Data:    data,
+		Context: m,
 	}
 	e, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("marshalling event: %v", err)
 	}
 
+	log.Printf("writing %v, %s to file", event, string(e))
 	return ioutil.WriteFile(outputFile, e, 0644)
 }
 

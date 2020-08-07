@@ -12,8 +12,8 @@ import (
 
 func main() {
 	ctx := context.Background()
-	if err := funcframework.RegisterHTTPFunctionContext(ctx, "/", function.HTTP); err != nil {
-		log.Fatalf("funcframework.RegisterHTTPFunctionContext: %v\n", err)
+	if err := funcframework.RegisterCloudEventFunctionContext(ctx, "/", function.CloudEvent); err != nil {
+		log.Fatalf("funcframework.RegisterCloudEventFunctionContext: %v", err)
 	}
 
 	// Use PORT environment variable, or default to 8080.
