@@ -36,7 +36,7 @@ jobs:
     - name: Run event conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
       with:
-        functionType: 'event'
+        functionType: 'legacyevent'
         validateMapping: false
         source: 'testdata'
         target: 'Event'
