@@ -43,27 +43,46 @@ logic.
 1.  Make sure you have Go 1.11+ installed with: `go version` The output should
     be Go 1.11 or higher.
 
-2.  Create the necessary directories. `sh mkdir -p hello/cmd cd hello`
+1.  Create the necessary directories.
 
-3.  Create a Go module: `sh go mod init example.com/hello`
+```sh
+mkdir -p hello/cmd cd hello
+```
 
-    > Note: You can use a different module name rather than `example.com/hello`.
+1.  Create a Go module:
 
-4.  Create a `function.go` file with the following contents: ```golang package
-    hello
+```sh
+go mod init example.com/hello
+```
 
-    import ( "net/http" "fmt" )
+> Note: You can use a different module name rather than `example.com/hello`.
 
-    // HelloWorld writes "Hello, World!" to the HTTP response. func HelloWorld(w
-    http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "Hello, World!\n") }
-    ```
+1.  Create a `function.go` file with the following contents:
 
-    > Note that you can use any file name or package name (convention is to make
-    > package name same as directory name).
+```golang
+package hello
 
-1.  Now go to the `cmd` subdirectory. `sh cd cmd`
+import (
+  "net/http"
+  "fmt"
+)
 
-2.  Create a `main.go` file with the following contents:
+// HelloWorld writes "Hello, World!" to the HTTP response.
+func HelloWorld(w http.ResponseWriter, r *http.Request) {
+  fmt.Fprint(w, "Hello, World!\n")
+}
+```
+
+> Note that you can use any file name or package name (convention is to make
+> package name same as directory name).
+
+1.  Now go to the `cmd` subdirectory.
+
+```sh
+cd cmd
+```
+
+1.  Create a `main.go` file with the following contents:
 
 ```golang
 package main
@@ -93,9 +112,14 @@ func main() {
 }
 ```
 
-1.  Start the local development server: `sh go build ./cmd Serving function...`
+1.  Start the local development server:
 
-2.  Send requests to this function using `curl` from another terminal window:
+```sh
+go build ./cmd
+# Output: Serving function...
+```
+
+1.  Send requests to this function using `curl` from another terminal window:
 
 ```sh
 curl localhost:8080
