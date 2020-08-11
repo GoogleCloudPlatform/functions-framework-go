@@ -40,8 +40,11 @@ logic.
 
 ## Quickstart: Hello, World on your local machine
 
-1.  Make sure you have Go 1.11+ installed with: `go version` The output should
-    be Go 1.11 or higher.
+1.  Make sure you have Go 1.11+ installed:
+
+```sh
+go version
+```
 
 1.  Create the necessary directories.
 
@@ -145,7 +148,7 @@ tool.
 
 The Functions Framework is designed to be compatible with Knative environments.
 Just build and deploy your container to a Knative environment. Note that your
-app needs to listen `PORT` environment variable per
+app needs to listen `PORT` environment variable per the
 [Knative runtime contract](https://github.com/knative/serving/blob/master/docs/runtime-contract.md#inbound-network-connectivity).
 
 ## Configure the Functions Framework
@@ -167,7 +170,7 @@ To select a function, pass your function to
 
 ```golang
 if err := funcframework.RegisterHTTPFunctionContext("/", myFunction); err != nil {
-  // handle error
+  log.Fatalf(err)
 }
 ```
 
@@ -177,7 +180,7 @@ If your function handles events, use
 
 ```golang
 if err := funcframework.RegisterEventFunctionContext("/", eventFunction); err != nil {
-  // handle error
+  log.Fatalf(err)
 }
 
 func eventFunction(ctx context.Context, e myEventType) error {
