@@ -30,9 +30,9 @@ func HTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// LegacyEvent is a legacy event function that dumps the data and context to JSON and calls the
+// Event is a background event function that dumps the data and context to JSON and calls the
 // validator script on the result.
-func LegacyEvent(ctx context.Context, data interface{}) error {
+func Event(ctx context.Context, data interface{}) error {
 	m, err := metadata.FromContext(ctx)
 	if err != nil {
 		return fmt.Errorf("getting context metadata: %v", err)
