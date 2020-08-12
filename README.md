@@ -98,7 +98,7 @@ import (
 )
 
 func main() {
-  ctx := context.Backgroun()
+  ctx := context.Background()
   if err := funcframework.RegisterHTTPFunctionContext("/", hello.HelloWorld); err != nil {
     log.Fatalf("funcframework.RegisterHTTPFunction: %v\n", err)
   }
