@@ -214,7 +214,7 @@ func TestCloudEventFunction(t *testing.T) {
 	var tests = []struct {
 		name      string
 		data      []byte
-		fn        func(context.Context, cloudevents.Event)
+		fn        func(context.Context, cloudevents.Event) error
 		status    int
 		header    string
 		ceHeaders map[string]string
@@ -222,10 +222,11 @@ func TestCloudEventFunction(t *testing.T) {
 		{
 			name: "binary cloudevent",
 			data: []byte("<much wow=\"xml\"/>"),
-			fn: func(ctx context.Context, e cloudevents.Event) {
+			fn: func(ctx context.Context, e cloudevents.Event) error {
 				if e.String() != testCE.String() {
-					t.Errorf("TestCloudEventFunction(binary cloudevent): got: %v, want: %v", e, testCE)
+					return fmt.Errorf("TestCloudEventFunction(binary cloudevent): got: %v, want: %v", e, testCE)
 				}
+				return nil
 			},
 			status: http.StatusOK,
 			header: "",
@@ -243,10 +244,11 @@ func TestCloudEventFunction(t *testing.T) {
 		{
 			name: "structured cloudevent",
 			data: cloudeventsJSON,
-			fn: func(ctx context.Context, e cloudevents.Event) {
+			fn: func(ctx context.Context, e cloudevents.Event) error {
 				if e.String() != testCE.String() {
-					t.Fatalf("TestCloudEventFunction(structured cloudevent): got: %v, want: %v", e, testCE)
+					return fmt.Errorf("TestCloudEventFunction(structured cloudevent): got: %v, want: %v", e, testCE)
 				}
+				return nil
 			},
 			status: http.StatusOK,
 			header: "",
