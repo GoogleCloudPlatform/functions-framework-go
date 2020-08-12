@@ -77,7 +77,7 @@ func HelloWorld(w http.ResponseWriter, r *http.Request) {
 ```
 
 > Note that you can use any file name or package name (convention is to make
-> package name same as directory name).
+> the package name the same as the directory name).
 
 1.  Now go to the `cmd` subdirectory.
 
