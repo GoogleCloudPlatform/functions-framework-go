@@ -49,7 +49,8 @@ go version
 1.  Create the necessary directories.
 
 ```sh
-mkdir -p hello/cmd cd hello
+mkdir -p hello/cmd
+cd hello
 ```
 
 1.  Create a Go module:
