@@ -68,7 +68,6 @@ handling logic.
 	package name same as directory name).
 
 1. Build a container from your function using the Functions [buildpacks](https://github.com/GoogleCloudPlatform/buildpacks):
-
   ```sh
   pack build \
     --builder gcr.io/buildpacks/builder:v1 \
@@ -145,7 +144,7 @@ metadata under a functions-specific key. This data is accesible via the `cloud.g
 m := metadata.FromContext(ctx)
 ```
 
-### Cloud Event Functions
+### CloudEvent Functions
 
 The Functions Framework provides support for unmarshalling an incoming
 [CloudEvent](https://cloudevents.io/) payload into a `cloudevents.Event` object.
