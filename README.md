@@ -68,13 +68,13 @@ handling logic.
 	package name same as directory name).
 
 1. Build a container from your function using the Functions [buildpacks](https://github.com/GoogleCloudPlatform/buildpacks):
-  ```sh
-  pack build \
-    --builder gcr.io/buildpacks/builder:v1 \
-    --env GOOGLE_FUNCTION_SIGNATURE_TYPE=http \
-    --env GOOGLE_FUNCTION_TARGET=HelloWorld \
-    my-first-function
-  ```
+	```sh
+	pack build \
+		--builder gcr.io/buildpacks/builder:v1 \
+		--env GOOGLE_FUNCTION_SIGNATURE_TYPE=http \
+		--env GOOGLE_FUNCTION_TARGET=HelloWorld \
+		my-first-function
+	```
 
 1. Start the built container:
 	```sh
