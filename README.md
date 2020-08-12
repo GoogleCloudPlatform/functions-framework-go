@@ -42,94 +42,94 @@ logic.
 
 1.  Make sure you have Go 1.11+ installed:
 
-```sh
-go version
-```
+    ```sh
+    go version
+    ```
 
 1.  Create the necessary directories.
 
-```sh
-mkdir -p hello/cmd
-cd hello
-```
+    ```sh
+    mkdir -p hello/cmd
+    cd hello
+    ```
 
 1.  Create a Go module:
 
-```sh
-go mod init example.com/hello
-```
+    ```sh
+    go mod init example.com/hello
+    ```
 
-> Note: You can use a different module name rather than `example.com/hello`.
+    > Note: You can use a different module name rather than `example.com/hello`.
 
 1.  Create a `function.go` file with the following contents:
 
-```golang
-package hello
+    ```golang
+    package hello
 
-import (
-  "net/http"
-  "fmt"
-)
+    import (
+      "net/http"
+      "fmt"
+    )
 
-// HelloWorld writes "Hello, World!" to the HTTP response.
-func HelloWorld(w http.ResponseWriter, r *http.Request) {
-  fmt.Fprint(w, "Hello, World!\n")
-}
-```
+    // HelloWorld writes "Hello, World!" to the HTTP response.
+    func HelloWorld(w http.ResponseWriter, r *http.Request) {
+      fmt.Fprint(w, "Hello, World!\n")
+    }
+    ```
 
-> Note that you can use any file name or package name (convention is to make
-> the package name the same as the directory name).
+    > Note that you can use any file name or package name (convention is to make
+    > the package name the same as the directory name).
 
 1.  Now go to the `cmd` subdirectory.
 
-```sh
-cd cmd
-```
+    ```sh
+    cd cmd
+    ```
 
 1.  Create a `main.go` file with the following contents:
 
-```golang
-package main
+    ```golang
+    package main
 
-import (
-  "log"
-  "os"
+    import (
+      "log"
+      "os"
 
-  "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-  "example.com/hello"
-)
+      "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+      "example.com/hello"
+    )
 
-func main() {
-  ctx := context.Background()
-  if err := funcframework.RegisterHTTPFunctionContext("/", hello.HelloWorld); err != nil {
-    log.Fatalf("funcframework.RegisterHTTPFunction: %v\n", err)
-  }
+    func main() {
+      ctx := context.Background()
+      if err := funcframework.RegisterHTTPFunctionContext("/", hello.HelloWorld); err != nil {
+        log.Fatalf("funcframework.RegisterHTTPFunction: %v\n", err)
+      }
 
-  // Use PORT environment variable, or default to 8080.
-  port := "8080"
-  if envPort := os.Getenv("PORT"); envPort != "" {
-    port = envPort
-  }
+      // Use PORT environment variable, or default to 8080.
+      port := "8080"
+      if envPort := os.Getenv("PORT"); envPort != "" {
+        port = envPort
+      }
 
-  if err := funcframework.Start(port); err != nil {
-    log.Fatalf("funcframework.Start: %v\n", err)
-  }
-}
-```
+      if err := funcframework.Start(port); err != nil {
+        log.Fatalf("funcframework.Start: %v\n", err)
+      }
+    }
+    ```
 
 1.  Start the local development server:
 
-```sh
-go build ./cmd
-# Output: Serving function...
-```
+    ```sh
+    go build ./cmd
+    # Output: Serving function...
+    ```
 
 1.  Send requests to this function using `curl` from another terminal window:
 
-```sh
-curl localhost:8080
-# Output: Hello, World!
-```
+    ```sh
+    curl localhost:8080
+    # Output: Hello, World!
+    ```
 
 ## Run your function on serverless platforms
 
