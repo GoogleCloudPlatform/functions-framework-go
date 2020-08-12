@@ -30,7 +30,7 @@ curl http://my-url
 All without needing to worry about writing an HTTP server or request
 handling logic.
 
-# Features
+## Features
 
 *   Spin up a local development server for quick testing with little extra code
 *   Invoke a function in response to a request
@@ -38,19 +38,9 @@ handling logic.
     [CloudEvents](https://cloudevents.io/) spec
 *   Portable between serverless platforms
 
-# Quickstart: Hello, World on your local machine
+## Quickstart: Hello, World on your local machine
 
-1. Make sure you have Go 1.11+ installed with:
-	```
-	go version
-	```
-	The output should be Go 1.11 or higher.
-
-1. Create the necessary directories.
-	```sh
-	mkdir -p hello/cmd
-	cd hello
-	```
+1. Install Go 1.11+, [Docker](https://store.docker.com/search?type=edition&offering=community), and the [`pack` tool](https://buildpacks.io/docs/install-pack/).
 
 1. Create a Go module:
 	```sh
@@ -77,44 +67,16 @@ handling logic.
 	> Note that you can use any file name or package name (convention is to make
 	package name same as directory name).
 
-1. Now go to the `cmd` subdirectory.
+1. Build a container from your function using the Functions [buildpacks](https://github.com/GoogleCloudPlatform/buildpacks):
+
+  ```sh
+  pack build --builder gcr.io/buildpacks/builder:v1 my-first-function
+  ```
+
+1. Start the built container:
 	```sh
-	cd cmd
-	```
-
-1. Create a `main.go` file with the following contents:
-	```golang
-	package main
-
-	import (
-		"log"
-		"os"
-
-		"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-		"example.com/hello"
-	)
-
-	func main() {
-		if err := funcframework.RegisterHTTPFunction("/", hello.HelloWorld); err != nil {
-			log.Fatalf("funcframework.RegisterHTTPFunction: %v\n", err)
-		}
-		// Use PORT environment variable, or default to 8080.
-		port := "8080"
-		if envPort := os.Getenv("PORT"); envPort != "" {
-			port = envPort
-		}
-
-		if err := funcframework.Start(port); err != nil {
-			log.Fatalf("funcframework.Start: %v\n", err)
-		}
-	}
-	```
-
-1. Start the local development server:
-	```sh
-	go build
-	./cmd
-	Serving function...
+	docker run --rm -p 8080:8080 my-first-function
+	# Output: Serving function...
 	```
 
 2. Send requests to this function using `curl` from another terminal window:
@@ -123,67 +85,70 @@ handling logic.
 	# Output: Hello, World!
 	```
 
-# Run your function on serverless platforms
+## Run your function on serverless platforms
 
-## Google Cloud Functions
+### Google Cloud Functions
 
-You cannot deploy main packages to Google Cloud Functions. You need to go back to the parent directory
-in which your function code is.
-
-```sh
-cd ..
-```
-
-and you can deploy it from your local machine using the `gcloud` command-line tool.
+Deploy from your local machine using the `gcloud` command-line tool.
 [Check out the Cloud Functions quickstart](https://cloud.google.com/functions/docs/quickstart).
 
-## Container environments based on Knative
+### Container environments based on Knative
 
 The Functions Framework is designed to be compatible with Knative environments.
 Just build and deploy your container to a Knative environment. Note that your app needs to listen
 `PORT` environment variable per [Knative runtime contract](https://github.com/knative/serving/blob/master/docs/runtime-contract.md#inbound-network-connectivity).
 
-# Configure the Functions Framework
+## Functions Framework Features
 
-If you're deploying to Google Cloud Functions, you don't need to worry about writing a
-`package main`. But if you want to run your function locally (e.g., for local development),
-you may want to configure the port, the function to be executed, and the function signature type
-(which specifies event unmarshalling logic). You can do this by modifying the `main.go`
-file described above:
+The Go Functions Framework conforms to the [Functions Framework Contract](https://github.com/GoogleCloudPlatform/functions-framework), As such, it
+supports HTTP functions, background event functions, and CloudEvent functions
+(as of v1.1.0). The primary build mechanism is the [GCP buildpacks stack](https://github.com/GoogleCloudPlatform/buildpacks), which takes a function of
+one of the accepted types, converts it to a full HTTP serving app, and creates a
+launchable container to run the server.
 
-To select a port, set the `$PORT` environment variable when running.
+### HTTP Functions
 
-```sh
-PORT=8000 ./cmd
-```
-
-To select a function, pass your function to `funcframework.RegisterHTTPFunction` in the second variable.
+The Framework provides support for handling native Go HTTP-style functions:
 
 ```golang
-funcframework.RegisterHTTPFunction("/", myFunction);
-```
-
-If your function handles events, use `funcframework.RegisterEventFunction` instead of `funcframework.RegisterHTTPFunction`.
-
-```golang
-funcframework.RegisterEventFunction("/", eventFunction);
-
-func eventFunction(ctx context.Context, e myEventType){
-	// function logic
+func HTTPFunction(w http.ResponseWriter, r *http.Request) error {
+	// Do something with r, and write response to w.
 }
 ```
 
-> Note that the first parameter to a function that handles events has to be `context.Context`
-and the type of second parameter needs to be a type of an unmarshallable event.
+The functions are registered with the handler via `funcframework.RegisterHTTPFunctionContext` and should behave according to idiomatic Go HTTP expectations.
 
-# Enable CloudEvents
+### Background Event Functions
 
-The Functions Framework provides support for unmarshalling an incoming
-CloudEvents payload into a `cloudevents.Event` object. These will be passed as
-arguments to your function when it receives a request.
+[Background events](https://cloud.google.com/functions/docs/writing/background)
+are also supported. This type of function takes two parameters: a Go context and
+a user-defined data struct.
 
 ```golang
-func CloudEventsFunction(ctx context.Context, e cloudevents.Event) {
+func BackgroundEventFunction(ctx context.Context, data userDefinedEventStruct) error {
+	// Do something with ctx and data.
+}
+```
+
+This type of event requires you to define a struct with the
+appropriate data fields (e.g. those for a PubSub message or GCS event) and pass
+that struct as the data parameter. See the [samples](https://cloud.google.com/functions/docs/writing/background) for details.
+
+The context parameter is a Go `context.Context`, and contains additional event
+metadata under a functions-specific key. This data is accesible via the `cloud.google.com/go/functions/metadata` package:
+
+```golang
+m := metadata.FromContext(ctx)
+```
+
+### Cloud Event Functions
+
+The Functions Framework provides support for unmarshalling an incoming
+[CloudEvent](https://cloudevents.io/) payload into a `cloudevents.Event` object.
+These will be passed as arguments to your function when it receives a request.
+
+```golang
+func CloudEventFunction(ctx context.Context, e cloudevents.Event) error {
 	// Do something with event.Context and event.Data (via event.DataAs(foo)).
 }
 ```
