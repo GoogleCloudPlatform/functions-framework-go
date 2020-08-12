@@ -55,13 +55,15 @@ func Event(ctx context.Context, data interface{}) error {
 
 // CloudEvent is a cloud event function that dumps the event to JSON and calls the validator script
 // on the result.
-func CloudEvent(ctx context.Context, ce cloudevents.Event) {
+func CloudEvent(ctx context.Context, ce cloudevents.Event) error {
 	e, err := json.Marshal(ce)
 	if err != nil {
-		log.Fatalf("marshalling cloud event: %v", err)
+		return fmt.Errorf("marshalling cloud event: %v", err)
 	}
 
 	if err := ioutil.WriteFile(outputFile, e, 0644); err != nil {
-		log.Fatalf("writing file: %v", err)
+		return fmt.Errorf("writing file: %v", err)
 	}
+
+	return nil
 }
