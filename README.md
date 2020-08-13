@@ -32,7 +32,7 @@ handling logic.
 
 ## Features
 
-*   Build your Function in the same container environment seen by Cloud Functions using [buildpacks](https://github.com/GoogleCloudPlatform/buildpacks).
+*   Build your Function in the same container environment used by Cloud Functions using [buildpacks](https://github.com/GoogleCloudPlatform/buildpacks).
 *   Invoke a function in response to a request
 *   Automatically unmarshal events conforming to the
     [CloudEvents](https://cloudevents.io/) spec
@@ -40,7 +40,7 @@ handling logic.
 
 ## Quickstart: Hello, World on your local machine
 
-1. Install Go 1.11+, [Docker](https://store.docker.com/search?type=edition&offering=community), and the [`pack` tool](https://buildpacks.io/docs/install-pack/).
+1. Install Go 1.11+.
 
 1. Create a Go module:
 	```sh
@@ -67,6 +67,56 @@ handling logic.
 	> Note that you can use any file name or package name (convention is to make
 	package name same as directory name).
 
+1. To run locally, you'll need to create a main package to start your server
+   (see instructions below for container builds to skip this step and match your
+   local development environment to production):
+   ```sh
+   mkdir cmd
+   ```
+
+1. Create a `cmd/main.go` file with the following contents:
+	```golang
+	package main
+	import (
+		"log"
+		"os"
+
+		"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+		"example.com/hello"
+	)
+	func main() {
+		ctx := context.Background()
+		if err := funcframework.RegisterHTTPFunctionContext(ctx, "/", hello.HelloWorld); err != nil {
+			log.Fatalf("funcframework.RegisterHTTPFunctionContext: %v\n", err)
+		}
+		// Use PORT environment variable, or default to 8080.
+		port := "8080"
+		if envPort := os.Getenv("PORT"); envPort != "" {
+			port = envPort
+		}
+		if err := funcframework.Start(port); err != nil {
+			log.Fatalf("funcframework.Start: %v\n", err)
+		}
+	}
+	```
+
+1. Start the local development server:
+  ```sh
+  cd cmd
+  go run main.go
+  # Output: Serving function...
+  ```
+
+1. Send requests to this function using `curl` from another terminal window:
+	```sh
+	curl localhost:8080
+	# Output: Hello, World!
+	```
+
+## Go further: build a deployable container
+
+1. Install [Docker](https://store.docker.com/search?type=edition&offering=community) and the [`pack` tool](https://buildpacks.io/docs/install-pack/).
+
 1. Build a container from your function using the Functions [buildpacks](https://github.com/GoogleCloudPlatform/buildpacks):
 	```sh
 	pack build \
@@ -82,7 +132,7 @@ handling logic.
 	# Output: Serving function...
 	```
 
-2. Send requests to this function using `curl` from another terminal window:
+1. Send requests to this function using `curl` from another terminal window:
 	```sh
 	curl localhost:8080
 	# Output: Hello, World!
