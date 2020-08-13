@@ -101,11 +101,11 @@ handling logic.
 	```
 
 1. Start the local development server:
-  ```sh
-  cd cmd
-  go run main.go
-  # Output: Serving function...
-  ```
+	```sh
+	cd cmd
+	go run main.go
+	# Output: Serving function...
+	```
 
 1. Send requests to this function using `curl` from another terminal window:
 	```sh
