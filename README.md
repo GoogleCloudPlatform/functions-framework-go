@@ -32,7 +32,7 @@ handling logic.
 
 ## Features
 
-*   Spin up a local development server for quick testing with little extra code
+*   Build your Function in the same container environment seen by Cloud Functions using [buildpacks](https://github.com/GoogleCloudPlatform/buildpacks).
 *   Invoke a function in response to a request
 *   Automatically unmarshal events conforming to the
     [CloudEvents](https://cloudevents.io/) spec
