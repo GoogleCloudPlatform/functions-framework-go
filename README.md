@@ -169,7 +169,7 @@ func HTTPFunction(w http.ResponseWriter, r *http.Request) error {
 }
 ```
 
-The functions are registered with the handler via `funcframework.RegisterHTTPFunctionContext` and should behave according to idiomatic Go HTTP expectations.
+These functions are registered with the handler via `funcframework.RegisterHTTPFunctionContext`.
 
 ### Background Event Functions
 
@@ -194,6 +194,8 @@ metadata under a functions-specific key. This data is accesible via the `cloud.g
 m := metadata.FromContext(ctx)
 ```
 
+These functions are registered with the handler via `funcframework.RegisterEventFunctionContext`.
+
 ### CloudEvent Functions
 
 The Functions Framework provides support for unmarshalling an incoming
@@ -205,5 +207,7 @@ func CloudEventFunction(ctx context.Context, e cloudevents.Event) error {
 	// Do something with event.Context and event.Data (via event.DataAs(foo)).
 }
 ```
+
+These functions are registered with the handler via `funcframework.RegisterCloudEventFunctionContext`.
 
 To learn more about CloudEvents, see the [Go SDK for CloudEvents](https://github.com/cloudevents/sdk-go).
