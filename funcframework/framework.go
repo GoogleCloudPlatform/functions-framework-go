@@ -56,7 +56,7 @@ func recoverPanicHTTP(w http.ResponseWriter, msg string) {
 
 // RegisterHTTPFunction registers fn as an HTTP function.
 // Maintained for backward compatibility. Please use RegisterHTTPFunctionContext instead.
-func RegisterHTTPFunction(path string, fn interface{}) {
+func RegisterHTTFunction(path string, fn interface{}) {
 	defer recoverPanic("Registration panic")
 
 	fnHTTP, ok := fn.(func(http.ResponseWriter, *http.Request))
