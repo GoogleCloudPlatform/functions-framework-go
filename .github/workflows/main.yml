@@ -22,7 +22,7 @@ jobs:
 
       # To test this commit of the framework, specifically check it out in the test data.
     - name: Set up conformance test data
-      run: "pushd testdata && go get github.com/GoogleCloudPlatform/functions-framework-go@${GITHUB_SHA} && popd"
+      run: "pushd testdata && go get github.com/GoogleCloudPlatform/functions-framework-go@${GITHUB_REF} && popd"
 
     - name: Run HTTP conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
