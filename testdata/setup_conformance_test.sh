@@ -14,6 +14,8 @@ function goget {
 
 function vendor {
   pushd ${TESTDATA_DIR?}
+  # Remove the dependency
+  go get github.com/GoogleCloudPlatform/functions-framework-go@none
   go mod vendor
   rm -rf ${VENDOR_DIR?}
   mkdir -p ${VENDOR_DIR?}

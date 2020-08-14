@@ -1,4 +1,4 @@
-module github.com/GoogleCloudPlatform/functions-framework-go/testdata
+module github.com/GoogleCloudPlatform//testdata
 
 go 1.13
 
