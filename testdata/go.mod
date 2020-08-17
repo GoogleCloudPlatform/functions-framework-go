@@ -1,6 +1,6 @@
-module github.com/GoogleCloudPlatform//testdata
+module github.com/GoogleCloudPlatform/functions-framework-go/testdata
 
-go 1.13
+go 1.11
 
 require (
 	cloud.google.com/go v0.63.0

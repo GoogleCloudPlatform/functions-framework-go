@@ -11,14 +11,14 @@ jobs:
       with:
         go-version: '^1.13.1'
 
-    - name: Format
-      run: "find . -not \\( \\( -wholename './.git' \\) -prune \\) -name '*.go' | xargs gofmt -s -d"
+#     - name: Format
+#       run: "find . -not \\( \\( -wholename './.git' \\) -prune \\) -name '*.go' | xargs gofmt -s -d"
 
-    - name: Build and test
-      run: "go test ./..."
+#     - name: Build and test
+#       run: "go test ./..."
 
-    - name: Vet
-      run: "go vet ./..."
+#     - name: Vet
+#       run: "go vet ./..."
 
       # To test this commit of the framework, specifically check it out in the test data.
     - name: Set up conformance test data

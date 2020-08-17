@@ -10,7 +10,6 @@ import (
 	"net/http"
 
 	"cloud.google.com/go/functions/metadata"
-	_ "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
