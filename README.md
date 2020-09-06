@@ -80,7 +80,7 @@ handling logic.
 	import (
 		"log"
 		"os"
-
+		"context"
 		"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 		"example.com/hello"
 	)
