@@ -1,22 +1,23 @@
 on: [push, pull_request]
 
 jobs:
-  run-conformance:
-    runs-on: ubuntu-latest
-    name: Validate conformance test framework
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        go: [1.13, 1.14]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-    - uses: actions/checkout@v2
-
-    - uses: actions/setup-go@v2
+    - name: Setup Go
+      uses: actions/setup-go@v2
       with:
-        go-version: '^1.13.1'
-
+        go-version: ${{ matrix.go }}
+    - name: Checkout code
+      uses: actions/checkout@v2
     - name: Format
       run: "find . -not \\( \\( -wholename './.git' \\) -prune \\) -name '*.go' | xargs gofmt -s -d"
-
     - name: Build and test
       run: "go test ./..."
-
     - name: Vet
       run: "go vet ./..."
 
