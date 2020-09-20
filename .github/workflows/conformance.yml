@@ -1,26 +1,15 @@
+name: Go Conformance CI
 on: [push, pull_request]
-
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
+  build:
+    runs-on: ubuntu-18.04
     strategy:
       matrix:
         go: [1.13, 1.14]
-        os: [ubuntu-latest, macos-latest] # windows-latest doesn't support find -wholename
     steps:
-    - name: Setup Go
-      uses: actions/setup-go@v2
+    - uses: actions/setup-go@v2
       with:
-        go-version: ${{ matrix.go }}
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Format
-      run: "find . -not \\( \\( -wholename './.git' \\) -prune \\) -name '*.go' | xargs gofmt -s -d"
-    - name: Build and test
-      run: "go test ./..."
-    - name: Vet
-      run: "go vet ./..."
-
+        go-version: '1.14'
     - name: Run HTTP conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
       with:
@@ -30,7 +19,6 @@ jobs:
         target: 'HTTP'
         runtime: 'go113'
         tag: 'go113_20200713_20_RC00'
-
     - name: Run event conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
       with:
@@ -40,7 +28,6 @@ jobs:
         target: 'Event'
         runtime: 'go113'
         tag: 'go113_20200713_20_RC00'
-
     # TODO: Enable once buildpack supports CloudEvents.
     # - name: Run cloudevent conformance tests
     #   uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
