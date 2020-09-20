@@ -3,13 +3,13 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-18.04
-    strategy:
-      matrix:
-        go: [1.13, 1.14]
     steps:
-    - uses: actions/setup-go@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Setup Go
+      uses: actions/setup-go@v2
       with:
-        go-version: '1.14'
+        go-version: '1.13'
     - name: Run HTTP conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
       with:
