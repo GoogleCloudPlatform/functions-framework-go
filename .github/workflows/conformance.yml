@@ -1,5 +1,8 @@
 name: Go Conformance CI
-on: [push]
+on:
+  push:
+    branches:
+    - master
 jobs:
   build:
     runs-on: ubuntu-18.04
