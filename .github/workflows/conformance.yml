@@ -15,7 +15,7 @@ jobs:
       with:
         go-version: '1.13'
     - name: Setup test data
-      run: set_up_conformance_tests.sh
+      run: "./set_up_conformance_tests.sh"
     - name: Run HTTP conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
       with:
