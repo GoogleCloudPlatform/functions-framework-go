@@ -20,7 +20,7 @@ jobs:
         source: 'testdata'
         target: 'HTTP'
         runtime: 'go113'
-        tag: 'go113_20200924_20_RC00'
+        tag: 'go113_20200817_20_RC00'
     - name: Run event conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
       with:
@@ -29,7 +29,7 @@ jobs:
         source: 'testdata'
         target: 'Event'
         runtime: 'go113'
-        tag: 'go113_20200924_20_RC00'
+        tag: 'go113_20200817_20_RC00'
     # TODO: Enable once buildpack supports CloudEvents.
     # - name: Run cloudevent conformance tests
     #   uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
@@ -39,4 +39,4 @@ jobs:
     #     source: 'testdata'
     #     target: 'CloudEvent'
     #     runtime: 'go113'
-    #     tag: 'go113_20200924_20_RC00'
+    #     tag: 'go113_20200817_20_RC00'
