@@ -1,8 +1,5 @@
 name: Go Conformance CI
-on:
-  push:
-    branches:
-    - master
+on: push
 jobs:
   build:
     runs-on: ubuntu-18.04
@@ -13,6 +10,8 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: '1.13'
+    - name: Setup test data
+      run: "./set_up_conformance_tests.sh"
     - name: Run HTTP conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
       with:
@@ -21,7 +20,7 @@ jobs:
         source: 'testdata'
         target: 'HTTP'
         runtime: 'go113'
-        tag: 'go113_20200713_20_RC00'
+        tag: 'go113_20200924_20_RC00'
     - name: Run event conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
       with:
@@ -30,7 +29,7 @@ jobs:
         source: 'testdata'
         target: 'Event'
         runtime: 'go113'
-        tag: 'go113_20200713_20_RC00'
+        tag: 'go113_20200924_20_RC00'
     # TODO: Enable once buildpack supports CloudEvents.
     # - name: Run cloudevent conformance tests
     #   uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
@@ -40,4 +39,4 @@ jobs:
     #     source: 'testdata'
     #     target: 'CloudEvent'
     #     runtime: 'go113'
-    #     tag: 'go113_20200713_20_RC00'
+    #     tag: 'go113_20200924_20_RC00'
