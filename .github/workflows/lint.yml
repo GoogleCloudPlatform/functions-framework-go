@@ -1,4 +1,4 @@
-name: Go Unit CI
+name: Go Lint CI
 on:
   push:
     branches:
@@ -18,7 +18,5 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go }}
-    - name: Build and test
-      run: "go test ./..."
-    - name: Vet
-      run: "go vet ./..."
+    - name: Format
+      run: "find . -not \\( \\( -wholename './.git' \\) -prune \\) -name '*.go' | xargs gofmt -s -d"
