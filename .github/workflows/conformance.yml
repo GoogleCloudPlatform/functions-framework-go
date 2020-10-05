@@ -13,7 +13,7 @@ jobs:
     - name: Setup test data
       run: "./set_up_conformance_tests.sh"
     - name: Run HTTP conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
+      uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.3.0
       with:
         functionType: 'http'
         validateMapping: false
@@ -21,8 +21,9 @@ jobs:
         target: 'HTTP'
         runtime: 'go113'
         tag: 'go113_20200924_20_RC00'
+        startDelay: 10
     - name: Run event conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
+      uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.3.0
       with:
         functionType: 'legacyevent'
         validateMapping: false
@@ -30,13 +31,14 @@ jobs:
         target: 'Event'
         runtime: 'go113'
         tag: 'go113_20200924_20_RC00'
-    # TODO: Enable once buildpack supports CloudEvents.
-    # - name: Run cloudevent conformance tests
-    #   uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.1.0
-    #   with:
-    #     functionType: 'cloudevent'
-    #     validateMapping: false
-    #     source: 'testdata'
-    #     target: 'CloudEvent'
-    #     runtime: 'go113'
-    #     tag: 'go113_20200924_20_RC00'
+        startDelay: 10
+    - name: Run cloudevent conformance tests
+      uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.3.0
+      with:
+        functionType: 'cloudevent'
+        validateMapping: false
+        source: 'testdata'
+        target: 'CloudEvent'
+        runtime: 'go113'
+        tag: 'go113_20200924_20_RC00'
+        startDelay: 10

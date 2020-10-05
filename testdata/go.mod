@@ -1,6 +1,6 @@
 module example.com/framework-test
 
-go 1.15
+go 1.13
 
 require (
 	cloud.google.com/go v0.67.0
