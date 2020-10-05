@@ -115,6 +115,7 @@ func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Reques
 		defer fmt.Println()
 		defer fmt.Fprintln(os.Stderr)
 		defer recoverPanicHTTP(w, "Function panic")
+		fmt.Println("Serving HTTP...")
 		fn(w, r)
 	})
 	return nil
