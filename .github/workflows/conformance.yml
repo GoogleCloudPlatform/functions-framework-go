@@ -16,7 +16,6 @@ jobs:
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.3.0
       with:
         functionType: 'http'
-        validateMapping: false
         source: 'testdata'
         target: 'HTTP'
         runtime: 'go113'
@@ -36,7 +35,7 @@ jobs:
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.3.0
       with:
         functionType: 'cloudevent'
-        validateMapping: false
+        validateMapping: true
         source: 'testdata'
         target: 'CloudEvent'
         runtime: 'go113'
