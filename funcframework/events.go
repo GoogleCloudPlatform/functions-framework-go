@@ -15,11 +15,7 @@ import (
 )
 
 const (
-	ceIDHeader = "Ce-Id"
-	// ceSourceHeader      = "ce-source"
-	// ceTypeHeader        = "ce-type"
-	// ceTimeHeader        = "ce-time"
-	// ceSpecHeader        = "ce-specversion"
+	ceIDHeader          = "Ce-Id"
 	contentTypeHeader   = "Content-Type"
 	contentLengthHeader = "Content-Length"
 
