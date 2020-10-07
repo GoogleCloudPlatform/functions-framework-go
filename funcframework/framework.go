@@ -17,7 +17,6 @@
 package funcframework
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -28,7 +27,6 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"cloud.google.com/go/functions/metadata"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
@@ -150,75 +148,23 @@ func registerCloudEventFunction(ctx context.Context, path string, fn func(contex
 		return fmt.Errorf("failed to create handler: %v", err)
 	}
 
-	h.Handle(path, handleFn)
+	h.Handle(path, convertBackgroundToCloudEvent(handleFn))
 	return nil
-}
-
-func validateEventFunction(fn interface{}) error {
-	ft := reflect.TypeOf(fn)
-	if ft.NumIn() != 2 {
-		return fmt.Errorf("expected function to have two parameters, found %d", ft.NumIn())
-	}
-	var err error
-	errorType := reflect.TypeOf(&err).Elem()
-	if ft.NumOut() != 1 || !ft.Out(0).AssignableTo(errorType) {
-		return fmt.Errorf("expected function to return only an error")
-	}
-	var ctx context.Context
-	ctxType := reflect.TypeOf(&ctx).Elem()
-	if !ctxType.AssignableTo(ft.In(0)) {
-		return fmt.Errorf("expected first parameter to be context.Context")
-	}
-	return nil
-}
-
-func getLegacyEvent(r *http.Request, body []byte) (*metadata.Metadata, interface{}, error) {
-	// Handle legacy events' "data" and "context" fields.
-	event := struct {
-		Data     interface{}        `json:"data"`
-		Metadata *metadata.Metadata `json:"context"`
-	}{}
-	if err := json.Unmarshal(body, &event); err != nil {
-		return nil, nil, err
-	}
-
-	// If there is no "data" payload, this isn't a legacy event, but that's okay.
-	if event.Data == nil {
-		return nil, nil, nil
-	}
-
-	// If the "context" field was present, we have a complete event and so return.
-	if event.Metadata != nil {
-		return event.Metadata, event.Data, nil
-	}
-
-	// Otherwise, try to directly populate a metadata object.
-	m := &metadata.Metadata{}
-	if err := json.Unmarshal(body, m); err != nil {
-		return nil, nil, err
-	}
-
-	// Check for event ID to see if this is a legacy event, but if not that's okay.
-	if m.EventID == "" {
-		return nil, nil, nil
-	}
-
-	return m, event.Data, nil
 }
 
 func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{}) {
-	body := readHTTPRequestBody(w, r)
-	if body == nil {
-		// No body, error has already been written.
+	body, responseCode, err := readHTTPRequestBody(r)
+	if err != nil {
+		writeHTTPErrorResponse(w, responseCode, crashStatus, fmt.Sprintf("%v", err))
 		return
 	}
 
-	// Legacy events have data and an associated metadata, so parse those and run if present.
-	if metadata, data, err := getLegacyEvent(r, body); err != nil {
-		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, parsing legacy event: %s", err.Error(), string(body)))
+	// Background events have data and an associated metadata, so parse those and run if present.
+	if metadata, data, err := getBackgroundEvent(body); err != nil {
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, parsing background event: %s", err.Error(), string(body)))
 		return
 	} else if data != nil && metadata != nil {
-		runLegacyEvent(w, r, metadata, data, fn)
+		runBackgroundEvent(w, r, metadata, data, fn)
 		return
 	}
 
@@ -227,36 +173,17 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 	return
 }
 
-func runLegacyEvent(w http.ResponseWriter, r *http.Request, m *metadata.Metadata, data, fn interface{}) {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(data); err != nil {
-		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Unable to encode data %v: %s", data, err.Error()))
-		return
-	}
-	ctx := metadata.NewContext(r.Context(), m)
-	me, err := metadata.FromContext(ctx)
-	if err != nil {
-		fmt.Printf("%v", err)
-	}
-	fmt.Printf("%v vs %v", m.Resource, me.Resource)
-	runUserFunctionWithContext(ctx, w, r, buf.Bytes(), fn)
-}
-
-func readHTTPRequestBody(w http.ResponseWriter, r *http.Request) []byte {
+func readHTTPRequestBody(r *http.Request) ([]byte, int, error) {
 	if r.Body == nil {
-		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, "Request body not found")
-		return nil
+		return nil, http.StatusBadRequest, fmt.Errorf("request body not found")
 	}
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		writeHTTPErrorResponse(w, http.StatusUnsupportedMediaType, crashStatus, fmt.Sprintf("Could not read request body %s: %s", r.Body, err.Error()))
-		return nil
+		return nil, http.StatusUnsupportedMediaType, fmt.Errorf("Could not read request body %s: %v", r.Body, err)
 	}
 
-	return body
+	return body, http.StatusOK, nil
 }
 
 func runUserFunction(w http.ResponseWriter, r *http.Request, data []byte, fn interface{}) {

@@ -270,7 +270,7 @@ func TestCloudEventFunction(t *testing.T) {
 
 		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.data))
 		for k, v := range tc.ceHeaders {
-			req.Header.Set(k, v)
+			req.Header.Add(k, v)
 		}
 		client := &http.Client{}
 		resp, err := client.Do(req)
@@ -280,12 +280,14 @@ func TestCloudEventFunction(t *testing.T) {
 		}
 
 		if resp.StatusCode != tc.status {
-			t.Errorf("TestEventFunction(%s): response status = %v, want %v", tc.name, resp.StatusCode, tc.status)
-			continue
+			gotBody, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("unable to read got request body: %v", err)
+			}
+			t.Errorf("TestCloudEventFunction(%s): response status = %v, want %v, %q.", tc.name, resp.StatusCode, tc.status, string(gotBody))
 		}
 		if resp.Header.Get(functionStatusHeader) != tc.header {
-			t.Errorf("TestEventFunction(%s): response header = %s, want %s", tc.name, resp.Header.Get(functionStatusHeader), tc.header)
-			continue
+			t.Errorf("TestCloudEventFunction(%s): response header = %q, want %q", tc.name, resp.Header.Get(functionStatusHeader), tc.header)
 		}
 	}
 }
