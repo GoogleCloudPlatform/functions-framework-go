@@ -212,8 +212,16 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 	if !strings.HasSuffix(msg, "\n") {
 		msg += "\n"
 	}
+	fmt.Fprintf(os.Stderr, msg)
+
+	// Flush stdout and stderr when running on GCF. This must be done before writing
+	// the HTTP response in order for all logs to appear in Stackdriver.
+	if os.Getenv("K_SERVICE") != "" {
+		fmt.Println()
+		fmt.Fprintln(os.Stderr)
+	}
+
 	w.Header().Set(functionStatusHeader, status)
 	w.WriteHeader(statusCode)
-	fmt.Fprintf(os.Stderr, msg)
 	fmt.Fprintf(w, msg)
 }
