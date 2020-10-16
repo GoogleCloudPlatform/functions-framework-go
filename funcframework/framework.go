@@ -109,9 +109,11 @@ func Start(port string) error {
 func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request), h *http.ServeMux) error {
 	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		// TODO(b/111823046): Remove following once Cloud Functions does not need flushing the logs anymore.
-		// Force flush of logs after every function trigger.
-		defer fmt.Println()
-		defer fmt.Fprintln(os.Stderr)
+		if os.Getenv("K_SERVICE") != "" {
+			// Force flush of logs after every function trigger when running on GCF.
+			defer fmt.Println()
+			defer fmt.Fprintln(os.Stderr)
+		}
 		defer recoverPanicHTTP(w, "Function panic")
 		fn(w, r)
 	})
