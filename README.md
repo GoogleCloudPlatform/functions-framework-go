@@ -208,6 +208,9 @@ func CloudEventFunction(ctx context.Context, e cloudevents.Event) error {
 }
 ```
 
+For the complete set of supported CloudEvent function signatures, consult the CloudEvent SDK
+documentation [here](https://godoc.org/github.com/cloudevents/sdk-go/v2/client#Client).
+
 These functions are registered with the handler via `funcframework.RegisterCloudEventFunctionContext`.
 
 To learn more about CloudEvents, see the [Go SDK for CloudEvents](https://github.com/cloudevents/sdk-go).

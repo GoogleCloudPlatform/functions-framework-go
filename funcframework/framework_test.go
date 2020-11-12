@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -211,13 +212,17 @@ func TestCloudEventFunction(t *testing.T) {
 		t.Fatalf("TestCloudEventFunction: unable to create Event from JSON: %v", err)
 	}
 
+	replyType := fmt.Sprint("com.google.test.", rand.Uint64())
+	replySource := fmt.Sprint("https://github.com/GoogleCloudPlatform/functions-framework-go/funcframework/", rand.Uint64())
+
 	var tests = []struct {
-		name      string
-		data      []byte
-		fn        func(context.Context, cloudevents.Event) error
-		status    int
-		header    string
-		ceHeaders map[string]string
+		name        string
+		data        []byte
+		fn          interface{}
+		ceHeaders   map[string]string
+		status      int
+		wantHeaders map[string]string
+		wantBody    string
 	}{
 		{
 			name: "binary cloudevent",
@@ -229,7 +234,9 @@ func TestCloudEventFunction(t *testing.T) {
 				return nil
 			},
 			status: http.StatusOK,
-			header: "",
+			wantHeaders: map[string]string{
+				functionStatusHeader: "",
+			},
 			ceHeaders: map[string]string{
 				"ce-specversion":          "1.0",
 				"ce-type":                 "com.github.pull.create",
@@ -251,10 +258,45 @@ func TestCloudEventFunction(t *testing.T) {
 				return nil
 			},
 			status: http.StatusOK,
-			header: "",
+			wantHeaders: map[string]string{
+				functionStatusHeader: "",
+			},
 			ceHeaders: map[string]string{
 				"Content-Type": "application/cloudevents+json",
 			},
+		},
+		{
+			name: "cloudevent reply",
+			data: cloudeventsJSON,
+			fn: func(ctx context.Context, e cloudevents.Event) (*cloudevents.Event, error) {
+				// The other tests check content of the request, so just reply.
+				ce := cloudevents.NewEvent(cloudevents.VersionV1)
+				ce.SetType(replyType)
+				ce.SetSource(replySource)
+
+				data := struct {
+					A int `json:"a"`
+					B int `json:"b"`
+				}{
+					A: 3,
+					B: 4,
+				}
+				if err := ce.SetData("application/json", data); err != nil {
+					return nil, err
+				}
+				return &ce, nil
+			},
+			ceHeaders: map[string]string{
+				"Content-Type": "application/cloudevents+json",
+			},
+			status: http.StatusOK,
+			wantHeaders: map[string]string{
+				functionStatusHeader: "",
+				"Content-Type":       "application/json",
+				"CE-Type":            replyType,
+				"CE-Source":          replySource,
+			},
+			wantBody: `{"a":3,"b":4}`,
 		},
 	}
 
@@ -279,15 +321,20 @@ func TestCloudEventFunction(t *testing.T) {
 			continue
 		}
 
+		gotBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("unable to read got response body: %v", err)
+		} else if string(gotBody) != tc.wantBody {
+			t.Errorf("client.Do(%s) = %s, wanted %s", tc.name, string(gotBody), tc.wantBody)
+		}
+
 		if resp.StatusCode != tc.status {
-			gotBody, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				t.Fatalf("unable to read got request body: %v", err)
-			}
 			t.Errorf("TestCloudEventFunction(%s): response status = %v, want %v, %q.", tc.name, resp.StatusCode, tc.status, string(gotBody))
 		}
-		if resp.Header.Get(functionStatusHeader) != tc.header {
-			t.Errorf("TestCloudEventFunction(%s): response header = %q, want %q", tc.name, resp.Header.Get(functionStatusHeader), tc.header)
+		for k, v := range tc.wantHeaders {
+			if resp.Header.Get(k) != v {
+				t.Errorf("TestCloudEventFunction(%s): response header[%q] = %q, want %q", tc.name, k, resp.Header.Get(k), v)
+			}
 		}
 	}
 }
