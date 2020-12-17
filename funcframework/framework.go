@@ -103,7 +103,7 @@ func Start(port string) error {
 		fmt.Println("Serving function...")
 	}
 
-	return http.ListenAndServe(":"+port, handler)
+	return http.ListenAndServe("localhost:"+port, handler)
 }
 
 func registerHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request), h *http.ServeMux) error {
