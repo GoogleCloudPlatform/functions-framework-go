@@ -222,7 +222,9 @@ func TestCreateCloudEvent(t *testing.T) {
 		"type":            "google.cloud.pubsub.topic.v1.messagePublished",
 		"datacontenttype": "application/json",
 		"data": map[string]interface{}{
-			"data": "10",
+			"message": map[string]interface{}{
+				"data": "10",
+			},
 		},
 	}
 
@@ -283,6 +285,113 @@ func TestCreateCloudEvent(t *testing.T) {
 
 			if got := tc.req.Header.Get(contentLengthHeader); got != fmt.Sprint(len(gotBody)) {
 				t.Errorf("incorrect request content length header, got %s, want %s", got, fmt.Sprint(len(gotBody)))
+			}
+		})
+	}
+}
+
+func TestSplitResource(t *testing.T) {
+	tcs := []struct {
+		name         string
+		service      string
+		resource     string
+		wantResource string
+		wantSubject  string
+	}{
+		{
+			// Firebase Auth resources are not split.
+			name:         firebaseAuthCEService,
+			service:      firebaseAuthCEService,
+			resource:     "projects/my-project-id",
+			wantResource: "projects/my-project-id",
+		},
+		{
+			name:         firebaseCEService,
+			service:      firebaseCEService,
+			resource:     "projects/my-project-id/events/my-event",
+			wantResource: "projects/my-project-id",
+			wantSubject:  "events/my-event",
+		},
+		{
+			name:         firebaseDBCEService,
+			service:      firebaseDBCEService,
+			resource:     "projects/_/instances/my-instance/refs/abc/xyz",
+			wantResource: "projects/_/instances/my-instance",
+			wantSubject:  "refs/abc/xyz",
+		},
+		{
+			name:         firestoreCEService,
+			service:      firestoreCEService,
+			resource:     "projects/my-project-id/databases/(default)/documents/abc/xyz",
+			wantResource: "projects/my-project-id/databases/(default)",
+			wantSubject:  "documents/abc/xyz",
+		},
+		{
+			// Pub/Sub resources are not split.
+			// TODO(mtraver) Should we split on /topics/?
+			name:         pubSubCEService,
+			service:      pubSubCEService,
+			resource:     "projects/my-project-id/topics/my-topic",
+			wantResource: "projects/my-project-id/topics/my-topic",
+		},
+		{
+			name:         storageCEService,
+			service:      storageCEService,
+			resource:     "projects/_/buckets/my-bucket/objects/abc/xyz",
+			wantResource: "projects/_/buckets/my-bucket",
+			wantSubject:  "objects/abc/xyz",
+		},
+		{
+			name:         "nonexistent_service",
+			service:      "not.a.valid.service",
+			resource:     "projects/my-project-id/stuff/thing/abc/xyz",
+			wantResource: "projects/my-project-id/stuff/thing/abc/xyz",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			gotResource, gotSubject, err := splitResource(tc.service, tc.resource)
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+
+			if tc.wantResource != gotResource {
+				t.Errorf("incorrect resource, got %s, want %s", gotResource, tc.wantResource)
+			}
+
+			if tc.wantSubject != gotSubject {
+				t.Errorf("incorrect subject, got %s, want %s", gotSubject, tc.wantSubject)
+			}
+		})
+	}
+}
+
+func TestSplitResourceFailures(t *testing.T) {
+	tcs := []struct {
+		name     string
+		service  string
+		resource string
+	}{
+		{
+			name:     "no_match",
+			service:  storageCEService,
+			resource: "projects/my-project-id/stuff/thing/abc/xyz",
+		},
+		{
+			name:    "truncated_resource",
+			service: storageCEService,
+			// This resource should include an object path, e.g. "objects/abc/xyz",
+			// and we match against the whole string so this will not match.
+			resource: "projects/_/buckets/my-bucket/",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			gotResource, gotSubject, err := splitResource(tc.service, tc.resource)
+			if err == nil {
+				t.Errorf("expected error but got nil, resource %q, subject %q", gotResource, gotSubject)
 			}
 		})
 	}
