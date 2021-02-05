@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,6 +22,13 @@ const (
 
 	ceSpecVersion   = "1.0"
 	jsonContentType = "application/cloudevents+json"
+
+	firebaseAuthCEService = "firebaseauth.googleapis.com"
+	firebaseCEService     = "firebase.googleapis.com"
+	firebaseDBCEService   = "firebasedatabase.googleapis.com"
+	firestoreCEService    = "firestore.googleapis.com"
+	pubSubCEService       = "pubsub.googleapis.com"
+	storageCEService      = "storage.googleapis.com"
 )
 
 var (
@@ -46,23 +54,36 @@ var (
 	}
 
 	serviceBackgroundToCloudEvent = map[string]string{
-		"providers/cloud.firestore/":           "firestore.googleapis.com",
-		"providers/google.firebase.analytics/": "firebase.googleapis.com",
-		"providers/firebase.auth/":             "firebase.googleapis.com",
-		"providers/google.firebase.database/":  "firebase.googleapis.com",
-		"providers/cloud.pubsub/":              "pubsub.googleapis.com",
-		"providers/cloud.storage/":             "storage.googleapis.com",
-		"google.pubsub":                        "pubsub.googleapis.com",
-		"google.storage":                       "storage.googleapis.com",
+		"providers/cloud.firestore/":           firestoreCEService,
+		"providers/google.firebase.analytics/": firebaseCEService,
+		"providers/firebase.auth/":             firebaseAuthCEService,
+		"providers/google.firebase.database/":  firebaseDBCEService,
+		"providers/cloud.pubsub/":              pubSubCEService,
+		"providers/cloud.storage/":             storageCEService,
+		"google.pubsub":                        pubSubCEService,
+		"google.storage":                       storageCEService,
+	}
+
+	// ceServiceToResourceRe maps CloudEvent service strings to regexps used to split
+	// a background event resource string into CloudEvent resource and subject strings.
+	// Each regexp must have exactly two submatches (a.k.a. capture groups): the first
+	// for the resource and the second for the subject. See splitResource for more info.
+	ceServiceToResourceRe = map[string]*regexp.Regexp{
+		firebaseCEService:   regexp.MustCompile("^(projects/[^/]+)/(events/[^/]+)$"),
+		firebaseDBCEService: regexp.MustCompile("^(projects/_/instances/[^/]+)/(refs/.+)$"),
+		firestoreCEService:  regexp.MustCompile("^(projects/[^/]+/databases/\\(default\\))/(documents/.+)$"),
+		storageCEService:    regexp.MustCompile("^(projects/_/buckets/[^/]+)/(objects/.+)$"),
 	}
 )
 
+type backgroundEvent struct {
+	Data     interface{}        `json:"data"`
+	Metadata *metadata.Metadata `json:"context"`
+}
+
 func getBackgroundEvent(body []byte) (*metadata.Metadata, interface{}, error) {
 	// Handle background events' "data" and "context" fields.
-	event := struct {
-		Data     interface{}        `json:"data"`
-		Metadata *metadata.Metadata `json:"context"`
-	}{}
+	event := backgroundEvent{}
 	if err := json.Unmarshal(body, &event); err != nil {
 		return nil, nil, err
 	}
@@ -143,6 +164,42 @@ func encodeData(d interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// splitResource takes a background event resource string, which contains the full path to
+// a resource, for example:
+//
+//   - Cloud Storage bucket and object within it
+//   - Datastore database and entry within it
+//
+// and splits those two elements into separate strings; in CloudEvents the former is the
+// "resource" and the latter is the "subject". Splitting is performed based on a regexp
+// associated with the given CloudEvent service. See ceServiceToResourceRe for the regexp
+// mapping. For example,
+//
+//   "projects/_/buckets/some-bucket/objects/folder/test.txt"
+//
+// would be split to create the strings "projects/_/buckets/some-bucket"
+// and "objects/folder/test.txt". This function returns the resource string, the
+// subject string, and an error, which will be non-nil if a regexp failed to match.
+// If there is no regexp for the given service then the resource is returned unchanged
+// along with a nil error.
+func splitResource(service, resource string) (string, string, error) {
+	re, ok := ceServiceToResourceRe[service]
+	if !ok {
+		return resource, "", nil
+	}
+
+	match := re.FindStringSubmatch(resource)
+	if match == nil {
+		return resource, "", fmt.Errorf("resource regexp did not match")
+	}
+
+	if len(match) != 3 {
+		return resource, "", fmt.Errorf("expected 2 match groups, got %v", len(match)-1)
+	}
+
+	return match[1], match[2], nil
+}
+
 func createCloudEventRequest(r *http.Request) (int, error) {
 	body, rc, err := readHTTPRequestBody(r)
 	if err != nil {
@@ -183,7 +240,21 @@ func createCloudEventRequest(r *http.Request) (int, error) {
 		resource = md.Resource.RawPath
 	}
 
-	source := fmt.Sprintf("//%s/%s", service, resource)
+	var subject string
+	resource, subject, err = splitResource(service, resource)
+	if err != nil {
+		return http.StatusUnsupportedMediaType, err
+	}
+
+	// Handle Pub/Sub events.
+	if service == pubSubCEService {
+		// In a CloudEvent "data" is wrapped by "message".
+		d = struct {
+			Message interface{} `json:"message"`
+		}{
+			Message: d,
+		}
+	}
 
 	ce := map[string]interface{}{
 		"id":              md.EventID,
@@ -191,13 +262,17 @@ func createCloudEventRequest(r *http.Request) (int, error) {
 		"specversion":     ceSpecVersion,
 		"datacontenttype": "application/json",
 		"type":            t,
-		"source":          source,
+		"source":          fmt.Sprintf("//%s/%s", service, resource),
 		"data":            d,
+	}
+
+	if subject != "" {
+		ce["subject"] = subject
 	}
 
 	encoded, err := json.Marshal(ce)
 	if err != nil {
-		return http.StatusBadRequest, fmt.Errorf("Unable to marshal cloudevent %v: %s", ce, err.Error())
+		return http.StatusBadRequest, fmt.Errorf("Unable to marshal CloudEvent %v: %v", ce, err)
 	}
 
 	r.Body = ioutil.NopCloser(bytes.NewReader(encoded))
