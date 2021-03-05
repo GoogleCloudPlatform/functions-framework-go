@@ -74,6 +74,13 @@ var (
 		firestoreCEService:  regexp.MustCompile("^(projects/[^/]+/databases/\\(default\\))/(documents/.+)$"),
 		storageCEService:    regexp.MustCompile("^(projects/_/buckets/[^/]+)/(objects/.+)$"),
 	}
+
+	// firebaseAuthMetadataFieldsBackgroundToCloudEvent maps Firebase Auth background event metadata field
+	// names to their equivalent CloudEvent field names.
+	firebaseAuthMetadataFieldsBackgroundToCloudEvent = map[string]string{
+		"createdAt":      "createTime",
+		"lastSignedInAt": "lastSignInTime",
+	}
 )
 
 type backgroundEvent struct {
@@ -200,6 +207,31 @@ func splitResource(service, resource string) (string, string, error) {
 	return match[1], match[2], nil
 }
 
+// convertBackgroundFirebaseAuthMetadata converts Firebase Auth background event metadata to CloudEvent metadata.
+// The given data is only modified if it is a map with the requisite keys, so modifications occur in place.
+func convertBackgroundFirebaseAuthMetadata(data interface{}) {
+	d, ok := data.(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	if _, ok := d["metadata"]; !ok {
+		return
+	}
+
+	metadata, ok := d["metadata"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	for old, new := range firebaseAuthMetadataFieldsBackgroundToCloudEvent {
+		if _, ok := metadata[old]; ok {
+			metadata[new] = metadata[old]
+			delete(metadata, old)
+		}
+	}
+}
+
 func createCloudEventRequest(r *http.Request) (int, error) {
 	body, rc, err := readHTTPRequestBody(r)
 	if err != nil {
@@ -254,6 +286,11 @@ func createCloudEventRequest(r *http.Request) (int, error) {
 		}{
 			Message: d,
 		}
+	}
+
+	// Handle Firebase Auth events.
+	if service == firebaseAuthCEService {
+		convertBackgroundFirebaseAuthMetadata(d)
 	}
 
 	ce := map[string]interface{}{
