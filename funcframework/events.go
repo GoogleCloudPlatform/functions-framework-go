@@ -232,6 +232,20 @@ func convertBackgroundFirebaseAuthMetadata(data interface{}) {
 	}
 }
 
+// firebaseAuthSubject creates the CloudEvent subject from the "uid" field in the data.
+func firebaseAuthSubject(data interface{}) (string, error) {
+	d, ok := data.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("data is not a map from string to interface")
+	}
+
+	if _, ok := d["uid"]; !ok {
+		return "", fmt.Errorf("data does not contain field \"uid\"")
+	}
+
+	return fmt.Sprintf("users/%v", d["uid"]), nil
+}
+
 func createCloudEventRequest(r *http.Request) (int, error) {
 	body, rc, err := readHTTPRequestBody(r)
 	if err != nil {
@@ -291,6 +305,10 @@ func createCloudEventRequest(r *http.Request) (int, error) {
 	// Handle Firebase Auth events.
 	if service == firebaseAuthCEService {
 		convertBackgroundFirebaseAuthMetadata(d)
+
+		if s, err := firebaseAuthSubject(d); err == nil {
+			subject = s
+		}
 	}
 
 	ce := map[string]interface{}{
