@@ -87,12 +87,10 @@ func TestGetBackgroundEvent(t *testing.T) {
 		},
 		{
 			name:   "not a background event but no error",
-			hasErr: false,
 			input:  []byte(`{"random": "x"}`),
 		},
 		{
 			name:   "data and context event",
-			hasErr: false,
 			input: []byte(`{
    "context": {
       "eventId":"1144231683168617",
@@ -124,7 +122,6 @@ func TestGetBackgroundEvent(t *testing.T) {
 		},
 		{
 			name:   "data and embedded context event",
-			hasErr: false,
 			input: []byte(`{
   "eventId": "1215011316659232",
   "timestamp": "2020-05-18T12:13:19.209Z",
@@ -148,18 +145,46 @@ func TestGetBackgroundEvent(t *testing.T) {
 		},
 		{
 			name:   "data and invalid embedded context event no error",
-			hasErr: false,
 			input: []byte(`{
   "data": {
     "data": "VGhpcyBpcyBhIHNhbXBsZSBtZXNzYWdl"
   }
 }`),
 		},
+		{
+			name:   "legacy pubsub event",
+			input: []byte(`{
+				"subscription": "projects/FOO/subscriptions/BAR_SUB",
+				"message": {
+					"data": "eyJmb28iOiJiYXIifQ==",
+					"messageId": "1",
+					"attributes": {
+						"test": "123"
+					}
+				}
+			}`),
+			metadata: &metadata.Metadata{
+				EventID:   "1",
+				EventType: "google.pubsub.topic.publish",
+				Resource: &metadata.Resource{
+					Name: "projects/sample-project/topics/gcf-test",
+					Type:    "type.googleapis.com/google.pubusb.v1.PubsubMessage",
+					Service: "pubsub.googleapis.com",
+				},
+			},
+			data: map[string]interface{}{
+				"@type":      "type.googleapis.com/google.pubusb.v1.PubsubMessage",
+				"data":       []byte(`{"foo":"bar"}`),
+				"attributes": map[string]string{
+					"test": "123",
+				},
+			},
+		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			md, d, err := getBackgroundEvent(tc.input)
+			md, d, err := getBackgroundEvent(tc.input, "projects/sample-project/topics/gcf-test")
 			if tc.hasErr && err == nil {
 				t.Errorf("expected error but got nil")
 			}
@@ -167,12 +192,12 @@ func TestGetBackgroundEvent(t *testing.T) {
 				t.Errorf("expected no error, got error: %v", err)
 			}
 
-			if !cmp.Equal(md, tc.metadata) {
-				t.Errorf("incorrect metadata, got %+v, want %+v", md, tc.metadata)
+			if diff := cmp.Diff(tc.metadata, md); diff != "" {
+				t.Errorf("MakeGatewayInfo() mismatch (-want +got):\n%s", diff)
 			}
 
-			if !cmp.Equal(d, tc.data) {
-				t.Errorf("incorrect data, got %+v, want %+v", d, tc.data)
+			if diff := cmp.Diff(tc.data, d); diff != "" {
+				t.Errorf("getBackgroundEvent() data mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
