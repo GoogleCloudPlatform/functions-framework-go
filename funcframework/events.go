@@ -99,10 +99,10 @@ func getBackgroundEvent(body []byte, path string) (*metadata.Metadata, interface
 	if err := json.Unmarshal(body, &possible); err != nil {
 		return nil, nil, err
 	}
-	
+
 	event := possible.BackgroundEvent
 	// If the background event payload is missing, check if it's a legacy
-	// Pub/Sub event. 
+	// Pub/Sub event.
 	if possible.BackgroundEvent == nil && possible.LegacyEvent != nil {
 		topic, err := pubsub.ExtractTopicFromRequestPath(path)
 		if err != nil {
@@ -110,7 +110,7 @@ func getBackgroundEvent(body []byte, path string) (*metadata.Metadata, interface
 		}
 		event = pubsub.ConvertLegacyEventToBackgroundEvent(possible.LegacyEvent, topic)
 	}
-	
+
 	// If there is no "data" payload, this isn't a background event, but that's okay.
 	if event == nil || event.Data == nil {
 		return nil, nil, nil

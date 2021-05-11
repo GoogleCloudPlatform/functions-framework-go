@@ -22,9 +22,8 @@ jobs:
       with:
         go-version: '${{ matrix.go-version }}'
 
-    - run:
-        name: Fetch go dependencies
-        command: 'go get ./...'
+    - name: Fetch go dependencies and build
+      run: 'go build ./...'
 
     - name: Run HTTP conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.3.9

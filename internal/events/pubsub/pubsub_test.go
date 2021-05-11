@@ -168,14 +168,14 @@ func TestConvertLegacyEventToBackgroundEvent(t *testing.T) {
 					}
 					}`,
 			want: &fftypes.BackgroundEvent{
-					Metadata: &metadata.Metadata{
-						EventID:   "1",
-						EventType: "google.pubsub.topic.publish",
-						Resource: &metadata.Resource{
-							Type:    "type.googleapis.com/google.pubusb.v1.PubsubMessage",
-							Service: "pubsub.googleapis.com",
-						},
+				Metadata: &metadata.Metadata{
+					EventID:   "1",
+					EventType: "google.pubsub.topic.publish",
+					Resource: &metadata.Resource{
+						Type:    "type.googleapis.com/google.pubusb.v1.PubsubMessage",
+						Service: "pubsub.googleapis.com",
 					},
+				},
 				Data: map[string]interface{}{
 					"@type":      "type.googleapis.com/google.pubusb.v1.PubsubMessage",
 					"data":       []byte(`{"foo":"bar"}`),
