@@ -25,6 +25,9 @@ jobs:
     - name: Fetch go dependencies and build
       run: 'go build ./...'
 
+    - name: Fetch confrmance test client
+      run: 'go install github.com/GoogleCloudPlatform/functions-framework-conformance/client'
+
     - name: Run HTTP conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.3.9
       with:
