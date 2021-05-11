@@ -28,7 +28,7 @@ jobs:
         functionType: 'http'
         useBuildpacks: false
         cmd: "'go run testdata/conformance/cmd/http/main.go'"
-        startDelay: 20
+        startDelay: 10
 
     - name: Run event conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.3.9
