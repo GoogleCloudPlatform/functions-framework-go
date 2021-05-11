@@ -101,7 +101,9 @@ func getBackgroundEvent(body []byte, path string) (*metadata.Metadata, interface
 	}
 	
 	event := possible.BackgroundEvent
-	if possible.LegacyEvent != nil {
+	// If the background event payload is missing, check if it's a legacy
+	// Pub/Sub event. 
+	if possible.BackgroundEvent == nil && possible.LegacyEvent != nil {
 		topic, err := pubsub.ExtractTopicFromRequestPath(path)
 		if err != nil {
 			fmt.Printf("WARNING: %s", err)
