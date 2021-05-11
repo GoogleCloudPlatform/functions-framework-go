@@ -22,13 +22,17 @@ jobs:
       with:
         go-version: '${{ matrix.go-version }}'
 
+    - run:
+        name: Fetch go dependencies
+        command: 'go get ./...'
+
     - name: Run HTTP conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.3.9
       with:
         functionType: 'http'
         useBuildpacks: false
         cmd: "'go run testdata/conformance/cmd/http/main.go'"
-        startDelay: 10
+        startDelay: 5
 
     - name: Run event conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v0.3.9
