@@ -265,7 +265,7 @@ func TestGetBackgroundEvent(t *testing.T) {
 			}
 
 			if diff := cmp.Diff(tc.wantMetadata, md, diffOpts...); diff != "" {
-				t.Errorf("MakeGatewayInfo() mismatch (-want +got):\n%s", diff)
+				t.Errorf("getBackgroundEvent() mismatch (-want +got):\n%s", diff)
 			}
 
 			if diff := cmp.Diff(tc.wantData, d); diff != "" {
