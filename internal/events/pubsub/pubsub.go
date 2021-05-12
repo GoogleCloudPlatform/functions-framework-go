@@ -4,6 +4,7 @@ package pubsub
 import (
 	"fmt"
 	"regexp"
+	"time"
 
 	"cloud.google.com/go/functions/metadata"
 	"cloud.google.com/go/pubsub"
@@ -16,9 +17,11 @@ const (
 	pubsubService     = "pubsub.googleapis.com"
 )
 
-// LegacyEvent represents the legacy event payload that is sent by
-// Pub/Sub to Background Functions (https://cloud.google.com/functions/docs/writing/background).
-type LegacyEvent struct {
+// LegacyPushSubscriptionEvent is the event payload for legacy Cloud Pub/Sub
+// push subscription triggers (https://cloud.google.com/functions/docs/calling/pubsub#legacy_cloud_pubsub_triggers).
+// This matched the event payload that is sent by Pub/Sub to HTTP push
+// subscription endpoints (https://cloud.google.com/pubsub/docs/push#receiving_messages).
+type LegacyPushSubscriptionEvent struct {
 	Subscription string `json:"subscription"`
 	Message      `json:"message"`
 }
@@ -47,13 +50,17 @@ func ExtractTopicFromRequestPath(path string) (string, error) {
 	return matches[1], nil
 }
 
-// ConvertLegacyEventToBackgroundEvent converts a LegacyEvent to the standard
-// BackgroundEvent format for Background Functions.
-func ConvertLegacyEventToBackgroundEvent(le *LegacyEvent, topic string) *fftypes.BackgroundEvent {
+// ToBackgroundEvent converts the event to the standard BackgroundEvent format
+// for Background Functions.
+func (e *LegacyPushSubscriptionEvent) ToBackgroundEvent(topic string) *fftypes.BackgroundEvent {
+	timestamp := e.Message.PublishTime
+	if timestamp.IsZero() {
+		timestamp = time.Now()
+	}
 	return &fftypes.BackgroundEvent{
 		Metadata: &metadata.Metadata{
-			EventID:   le.IdFromJSON,
-			Timestamp: le.Message.PublishTime,
+			EventID:   e.IdFromJSON,
+			Timestamp: timestamp,
 			EventType: pubsubEventType,
 			Resource: &metadata.Resource{
 				Name:    topic,
@@ -63,8 +70,8 @@ func ConvertLegacyEventToBackgroundEvent(le *LegacyEvent, topic string) *fftypes
 		},
 		Data: map[string]interface{}{
 			"@type":      pubsubMessageType,
-			"data":       le.Message.Data,
-			"attributes": le.Message.Attributes,
+			"data":       e.Message.Data,
+			"attributes": e.Message.Attributes,
 		},
 	}
 }

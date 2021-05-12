@@ -90,7 +90,7 @@ func getBackgroundEvent(body []byte, path string) (*metadata.Metadata, interface
 	// Event types are mutually exclusive. During unmarshalling, only the field
 	// for the matching type is populated.
 	type possibleEvents struct {
-		*pubsub.LegacyEvent
+		*pubsub.LegacyPushSubscriptionEvent
 		*fftypes.BackgroundEvent
 	}
 
@@ -103,12 +103,12 @@ func getBackgroundEvent(body []byte, path string) (*metadata.Metadata, interface
 	event := possible.BackgroundEvent
 	// If the background event payload is missing, check if it's a legacy
 	// Pub/Sub event.
-	if possible.BackgroundEvent == nil && possible.LegacyEvent != nil {
+	if possible.BackgroundEvent == nil && possible.LegacyPushSubscriptionEvent != nil {
 		topic, err := pubsub.ExtractTopicFromRequestPath(path)
 		if err != nil {
 			fmt.Printf("WARNING: %s", err)
 		}
-		event = pubsub.ConvertLegacyEventToBackgroundEvent(possible.LegacyEvent, topic)
+		event = possible.LegacyPushSubscriptionEvent.ToBackgroundEvent(topic)
 	}
 
 	// If there is no "data" payload, this isn't a background event, but that's okay.

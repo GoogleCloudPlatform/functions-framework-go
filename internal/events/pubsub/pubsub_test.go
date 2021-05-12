@@ -8,6 +8,7 @@ import (
 	"cloud.google.com/go/functions/metadata"
 	"github.com/GoogleCloudPlatform/functions-framework-go/internal/fftypes"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestExtractTopicFromRequestPath(t *testing.T) {
@@ -71,6 +72,9 @@ func TestExtractTopicFromRequestPath_failure(t *testing.T) {
 		}, {
 			name: "random",
 			path: "fail/to/parse/this",
+		}, {
+			name: "empty string",
+			path: "",
 		},
 	}
 
@@ -94,7 +98,9 @@ func TestConvertLegacyEventToBackgroundEvent(t *testing.T) {
 		name  string
 		body  string
 		topic string
-		want  *fftypes.BackgroundEvent
+		// omit want.Metadata.Timestamp if timestamp should be auto-populated
+		// with time.Now()
+		want *fftypes.BackgroundEvent
 	}{
 		{
 			name: "legacy pubsub event",
@@ -212,14 +218,24 @@ func TestConvertLegacyEventToBackgroundEvent(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			event := LegacyEvent{}
+			event := LegacyPushSubscriptionEvent{}
 			if err := json.Unmarshal([]byte(test.body), &event); err != nil {
 				t.Fatalf("failed to unmarshal test body JSON into a legacy Pub/Sub event: %s", test.body)
 			}
 
-			got := ConvertLegacyEventToBackgroundEvent(&event, test.topic)
-			if diff := cmp.Diff(test.want, got); diff != "" {
+			got := event.ToBackgroundEvent(test.topic)
+			if diff := cmp.Diff(test.want, got, cmpopts.IgnoreFields(fftypes.BackgroundEvent{}, "Metadata.Timestamp")); diff != "" {
 				t.Errorf("ConvertLegacyEventToBackgroundEvent() mismatch (-want +got):\n%s", diff)
+			}
+
+			if test.want.Metadata.Timestamp.IsZero() {
+				if got.Metadata.Timestamp.IsZero() {
+					t.Errorf("ConvertLegacyEventToBackgroundEvent() did not auto-populate missing timestamp field")
+				}
+			} else {
+				if !test.want.Metadata.Timestamp.Equal(got.Metadata.Timestamp) {
+					t.Errorf("ConvertLegacyEventToBackgroundEvent() Metadata.Timestamp mismatch, want: %v, got: %v", test.want.Metadata.Timestamp, got.Metadata.Timestamp)
+				}
 			}
 		})
 	}
