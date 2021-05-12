@@ -11,24 +11,24 @@ import (
 )
 
 const (
-	pubsubEventType = "google.pubsub.topic.publish"
+	pubsubEventType   = "google.pubsub.topic.publish"
 	pubsubMessageType = "type.googleapis.com/google.pubusb.v1.PubsubMessage"
-	pubsubService = "pubsub.googleapis.com"
+	pubsubService     = "pubsub.googleapis.com"
 )
 
-// LegacyEvent represents the legacy event payload that is sent by 
+// LegacyEvent represents the legacy event payload that is sent by
 // Pub/Sub to Background Functions (https://cloud.google.com/functions/docs/writing/background).
 type LegacyEvent struct {
 	Subscription string `json:"subscription"`
-	Message `json:"message"`
+	Message      `json:"message"`
 }
 
 // Message is a pubsub.Message but with the correct JSON tag for the
 // message ID field that matches https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage
 type Message struct {
 	pubsub.Message
-	// The pubsub libary's Message.Id field (https://pkg.go.dev/cloud.google.com/go/internal/pubsub#Message) 
-	// doesn't have the correct JSON tag (it serializes to "id" instead of 
+	// The pubsub libary's Message.Id field (https://pkg.go.dev/cloud.google.com/go/internal/pubsub#Message)
+	// doesn't have the correct JSON tag (it serializes to "id" instead of
 	// "messageId"), so use this field to capture the JSON field with key
 	// "messageId".
 	IdFromJSON string `json:"messageId"`
@@ -52,18 +52,18 @@ func ExtractTopicFromRequestPath(path string) (string, error) {
 func ConvertLegacyEventToBackgroundEvent(le *LegacyEvent, topic string) *fftypes.BackgroundEvent {
 	return &fftypes.BackgroundEvent{
 		Metadata: &metadata.Metadata{
-			EventID: le.IdFromJSON,
+			EventID:   le.IdFromJSON,
 			Timestamp: le.Message.PublishTime,
 			EventType: pubsubEventType,
 			Resource: &metadata.Resource{
-				Name: topic,
-				Type: pubsubMessageType,
+				Name:    topic,
+				Type:    pubsubMessageType,
 				Service: pubsubService,
 			},
 		},
 		Data: map[string]interface{}{
-			"@type": pubsubMessageType,
-			"data": le.Message.Data,
+			"@type":      pubsubMessageType,
+			"data":       le.Message.Data,
 			"attributes": le.Message.Attributes,
 		},
 	}

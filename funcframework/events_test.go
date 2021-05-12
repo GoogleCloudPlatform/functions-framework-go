@@ -86,11 +86,11 @@ func TestGetBackgroundEvent(t *testing.T) {
 			input:  []byte(`{bad json`),
 		},
 		{
-			name:   "not a background event but no error",
-			input:  []byte(`{"random": "x"}`),
+			name:  "not a background event but no error",
+			input: []byte(`{"random": "x"}`),
 		},
 		{
-			name:   "data and context event",
+			name: "data and context event",
 			input: []byte(`{
    "context": {
       "eventId":"1144231683168617",
@@ -121,7 +121,7 @@ func TestGetBackgroundEvent(t *testing.T) {
 			},
 		},
 		{
-			name:   "data and embedded context event",
+			name: "data and embedded context event",
 			input: []byte(`{
   "eventId": "1215011316659232",
   "timestamp": "2020-05-18T12:13:19.209Z",
@@ -144,7 +144,7 @@ func TestGetBackgroundEvent(t *testing.T) {
 			},
 		},
 		{
-			name:   "data and invalid embedded context event no error",
+			name: "data and invalid embedded context event no error",
 			input: []byte(`{
   "data": {
     "data": "VGhpcyBpcyBhIHNhbXBsZSBtZXNzYWdl"
@@ -152,7 +152,7 @@ func TestGetBackgroundEvent(t *testing.T) {
 }`),
 		},
 		{
-			name:   "legacy pubsub event",
+			name: "legacy pubsub event",
 			input: []byte(`{
 				"subscription": "projects/FOO/subscriptions/BAR_SUB",
 				"message": {
@@ -167,14 +167,14 @@ func TestGetBackgroundEvent(t *testing.T) {
 				EventID:   "1",
 				EventType: "google.pubsub.topic.publish",
 				Resource: &metadata.Resource{
-					Name: "projects/sample-project/topics/gcf-test",
+					Name:    "projects/sample-project/topics/gcf-test",
 					Type:    "type.googleapis.com/google.pubusb.v1.PubsubMessage",
 					Service: "pubsub.googleapis.com",
 				},
 			},
 			data: map[string]interface{}{
-				"@type":      "type.googleapis.com/google.pubusb.v1.PubsubMessage",
-				"data":       []byte(`{"foo":"bar"}`),
+				"@type": "type.googleapis.com/google.pubusb.v1.PubsubMessage",
+				"data":  []byte(`{"foo":"bar"}`),
 				"attributes": map[string]string{
 					"test": "123",
 				},
