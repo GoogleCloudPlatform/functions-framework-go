@@ -162,7 +162,7 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 	}
 
 	// Background events have data and an associated metadata, so parse those and run if present.
-	if metadata, data, err := getBackgroundEvent(body); err != nil {
+	if metadata, data, err := getBackgroundEvent(body, r.URL.Path); err != nil {
 		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, parsing background event: %s", err.Error(), string(body)))
 		return
 	} else if data != nil && metadata != nil {
@@ -172,7 +172,6 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 
 	// Otherwise, we assume the body is a JSON blob containing the user-specified data structure.
 	runUserFunction(w, r, body, fn)
-	return
 }
 
 func readHTTPRequestBody(r *http.Request) ([]byte, int, error) {

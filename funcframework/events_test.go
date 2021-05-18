@@ -12,6 +12,7 @@ import (
 
 	"cloud.google.com/go/functions/metadata"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestValidateEventFunction(t *testing.T) {
@@ -74,26 +75,25 @@ func TestGetBackgroundEvent(t *testing.T) {
 		t.Fatalf("unable to parse time: %v", err)
 	}
 	tcs := []struct {
-		name     string
-		hasErr   bool
-		input    []byte
-		metadata *metadata.Metadata
-		data     interface{}
+		name         string
+		hasErr       bool
+		body         []byte
+		url          string
+		wantMetadata *metadata.Metadata
+		wantData     interface{}
 	}{
 		{
 			name:   "invalid json",
 			hasErr: true,
-			input:  []byte(`{bad json`),
+			body:   []byte(`{bad json`),
 		},
 		{
-			name:   "not a background event but no error",
-			hasErr: false,
-			input:  []byte(`{"random": "x"}`),
+			name: "not a background event but no error",
+			body: []byte(`{"random": "x"}`),
 		},
 		{
-			name:   "data and context event",
-			hasErr: false,
-			input: []byte(`{
+			name: "data and context event",
+			body: []byte(`{
    "context": {
       "eventId":"1144231683168617",
       "timestamp":"2020-05-18T12:13:19.209Z",
@@ -108,7 +108,8 @@ func TestGetBackgroundEvent(t *testing.T) {
       "data": "dGVzdCBtZXNzYWdlIDM="
    }
 }`),
-			metadata: &metadata.Metadata{
+			url: "projects/sample-project/topics/gcf-test",
+			wantMetadata: &metadata.Metadata{
 				EventID:   "1144231683168617",
 				Timestamp: timestamp,
 				EventType: "google.pubsub.topic.publish",
@@ -118,14 +119,13 @@ func TestGetBackgroundEvent(t *testing.T) {
 					Type:    "type.googleapis.com/google.pubsub.v1.PubsubMessage",
 				},
 			},
-			data: map[string]interface{}{
+			wantData: map[string]interface{}{
 				"data": "dGVzdCBtZXNzYWdlIDM=",
 			},
 		},
 		{
-			name:   "data and embedded context event",
-			hasErr: false,
-			input: []byte(`{
+			name: "data and embedded context event",
+			body: []byte(`{
   "eventId": "1215011316659232",
   "timestamp": "2020-05-18T12:13:19.209Z",
   "eventType": "providers/cloud.pubsub/eventTypes/topic.publish",
@@ -134,7 +134,7 @@ func TestGetBackgroundEvent(t *testing.T) {
     "data": "VGhpcyBpcyBhIHNhbXBsZSBtZXNzYWdl"
   }
 }`),
-			metadata: &metadata.Metadata{
+			wantMetadata: &metadata.Metadata{
 				EventID:   "1215011316659232",
 				Timestamp: timestamp,
 				EventType: "providers/cloud.pubsub/eventTypes/topic.publish",
@@ -142,24 +142,114 @@ func TestGetBackgroundEvent(t *testing.T) {
 					RawPath: "projects/sample-project/topics/gcf-test",
 				},
 			},
-			data: map[string]interface{}{
+			wantData: map[string]interface{}{
 				"data": "VGhpcyBpcyBhIHNhbXBsZSBtZXNzYWdl",
 			},
 		},
 		{
-			name:   "data and invalid embedded context event no error",
-			hasErr: false,
-			input: []byte(`{
+			name: "data and invalid embedded context event no error",
+			body: []byte(`{
   "data": {
     "data": "VGhpcyBpcyBhIHNhbXBsZSBtZXNzYWdl"
   }
 }`),
 		},
+		{
+			name: "data and embedded context event missing url",
+			body: []byte(`{
+  "eventId": "1215011316659232",
+  "timestamp": "2020-05-18T12:13:19.209Z",
+  "eventType": "providers/cloud.pubsub/eventTypes/topic.publish",
+  "resource": "projects/sample-project/topics/gcf-test",
+  "data": {
+    "data": "VGhpcyBpcyBhIHNhbXBsZSBtZXNzYWdl"
+  }
+}`),
+			// missing url has no effect on standard background events
+			url: "",
+			wantMetadata: &metadata.Metadata{
+				EventID:   "1215011316659232",
+				Timestamp: timestamp,
+				EventType: "providers/cloud.pubsub/eventTypes/topic.publish",
+				Resource: &metadata.Resource{
+					RawPath: "projects/sample-project/topics/gcf-test",
+				},
+			},
+			wantData: map[string]interface{}{
+				"data": "VGhpcyBpcyBhIHNhbXBsZSBtZXNzYWdl",
+			},
+		},
+		{
+			name: "data and invalid embedded context event no error",
+			body: []byte(`{
+  "data": {
+    "data": "VGhpcyBpcyBhIHNhbXBsZSBtZXNzYWdl"
+  }
+}`),
+		},
+		{
+			name: "raw pubsub event",
+			body: []byte(`{
+				"subscription": "projects/FOO/subscriptions/BAR_SUB",
+				"message": {
+					"data": "eyJmb28iOiJiYXIifQ==",
+					"messageId": "1",
+					"attributes": {
+						"test": "123"
+					}
+				}
+			}`),
+			url: "projects/sample-project/topics/gcf-test",
+			wantMetadata: &metadata.Metadata{
+				EventID:   "1",
+				EventType: "google.pubsub.topic.publish",
+				Resource: &metadata.Resource{
+					Name:    "projects/sample-project/topics/gcf-test",
+					Type:    "type.googleapis.com/google.pubusb.v1.PubsubMessage",
+					Service: "pubsub.googleapis.com",
+				},
+			},
+			wantData: map[string]interface{}{
+				"@type": "type.googleapis.com/google.pubusb.v1.PubsubMessage",
+				"data":  []byte(`{"foo":"bar"}`),
+				"attributes": map[string]string{
+					"test": "123",
+				},
+			},
+		},
+		{
+			name: "raw pubsub event missing url",
+			body: []byte(`{
+				"subscription": "projects/FOO/subscriptions/BAR_SUB",
+				"message": {
+					"data": "eyJmb28iOiJiYXIifQ==",
+					"messageId": "1",
+					"attributes": {
+						"test": "123"
+					}
+				}
+			}`),
+			wantMetadata: &metadata.Metadata{
+				EventID:   "1",
+				EventType: "google.pubsub.topic.publish",
+				Resource: &metadata.Resource{
+					Type:    "type.googleapis.com/google.pubusb.v1.PubsubMessage",
+					Service: "pubsub.googleapis.com",
+				},
+			},
+			wantData: map[string]interface{}{
+				"@type": "type.googleapis.com/google.pubusb.v1.PubsubMessage",
+				"data":  []byte(`{"foo":"bar"}`),
+				"attributes": map[string]string{
+					"test": "123",
+				},
+			},
+		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			md, d, err := getBackgroundEvent(tc.input)
+			md, d, err := getBackgroundEvent(tc.body, tc.url)
 			if tc.hasErr && err == nil {
 				t.Errorf("expected error but got nil")
 			}
@@ -167,12 +257,19 @@ func TestGetBackgroundEvent(t *testing.T) {
 				t.Errorf("expected no error, got error: %v", err)
 			}
 
-			if !cmp.Equal(md, tc.metadata) {
-				t.Errorf("incorrect metadata, got %+v, want %+v", md, tc.metadata)
+			// If timestamp is not being tested in this test case, skip comparing the field
+			// since some timestamps are auto-populated with time.Now()
+			diffOpts := []cmp.Option{}
+			if tc.wantMetadata != nil && tc.wantMetadata.Timestamp.IsZero() {
+				diffOpts = append(diffOpts, cmpopts.IgnoreFields(metadata.Metadata{}, "Timestamp"))
 			}
 
-			if !cmp.Equal(d, tc.data) {
-				t.Errorf("incorrect data, got %+v, want %+v", d, tc.data)
+			if diff := cmp.Diff(tc.wantMetadata, md, diffOpts...); diff != "" {
+				t.Errorf("getBackgroundEvent() mismatch (-want +got):\n%s", diff)
+			}
+
+			if diff := cmp.Diff(tc.wantData, d); diff != "" {
+				t.Errorf("getBackgroundEvent() data mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

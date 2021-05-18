@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/functions/metadata"
+	"github.com/GoogleCloudPlatform/functions-framework-go/internal/events/pubsub"
+	"github.com/GoogleCloudPlatform/functions-framework-go/internal/fftypes"
 )
 
 const (
@@ -83,20 +85,34 @@ var (
 	}
 )
 
-type backgroundEvent struct {
-	Data     interface{}        `json:"data"`
-	Metadata *metadata.Metadata `json:"context"`
-}
+func getBackgroundEvent(body []byte, path string) (*metadata.Metadata, interface{}, error) {
+	// Known background event types that the incoming request could represent.
+	// Event types are mutually exclusive. During unmarshalling, only the field
+	// for the matching type is populated.
+	type possibleEvents struct {
+		*pubsub.LegacyPushSubscriptionEvent
+		*fftypes.BackgroundEvent
+	}
 
-func getBackgroundEvent(body []byte) (*metadata.Metadata, interface{}, error) {
-	// Handle background events' "data" and "context" fields.
-	event := backgroundEvent{}
-	if err := json.Unmarshal(body, &event); err != nil {
+	// Attempt to unmarshal into one of the known background event types.
+	possible := possibleEvents{}
+	if err := json.Unmarshal(body, &possible); err != nil {
 		return nil, nil, err
 	}
 
+	event := possible.BackgroundEvent
+	// If the background event payload is missing, check if it's a legacy
+	// Pub/Sub event.
+	if possible.BackgroundEvent == nil && possible.LegacyPushSubscriptionEvent != nil {
+		topic, err := pubsub.ExtractTopicFromRequestPath(path)
+		if err != nil {
+			fmt.Printf("WARNING: %s", err)
+		}
+		event = possible.LegacyPushSubscriptionEvent.ToBackgroundEvent(topic)
+	}
+
 	// If there is no "data" payload, this isn't a background event, but that's okay.
-	if event.Data == nil {
+	if event == nil || event.Data == nil {
 		return nil, nil, nil
 	}
 
@@ -252,7 +268,7 @@ func createCloudEventRequest(r *http.Request) (int, error) {
 		return rc, err
 	}
 
-	md, d, err := getBackgroundEvent(body)
+	md, d, err := getBackgroundEvent(body, r.URL.Path)
 	if err != nil {
 		return http.StatusUnsupportedMediaType, fmt.Errorf("parsing background event body %s: %v", string(body), err)
 	}
