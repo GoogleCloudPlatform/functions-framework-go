@@ -203,7 +203,8 @@ func TestCloudEventFunction(t *testing.T) {
 		"time" : "2018-04-05T17:31:00Z",
 		"comexampleextension1" : "value",
 		"datacontenttype" : "application/xml",
-		"data" : "<much wow=\"xml\"/>"
+		"data" : "<much wow=\"xml\"/>",
+		"traceparent" : "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
 	}`)
 	var testCE cloudevents.Event
 	err := json.Unmarshal(cloudeventsJSON, &testCE)
@@ -238,6 +239,7 @@ func TestCloudEventFunction(t *testing.T) {
 				"ce-id":                   "A234-1234-1234",
 				"ce-time":                 "2018-04-05T17:31:00Z",
 				"ce-comexampleextension1": "value",
+				"traceparent":             "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
 				"Content-Type":            "application/xml",
 			},
 		},
