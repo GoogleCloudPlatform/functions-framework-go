@@ -26,7 +26,7 @@ jobs:
       run: 'go build ./...'
 
     - name: Run HTTP conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.1.0
+      uses: GoogleCloudPlatform/functions-framework-conformance/action
       with:
         version: 'v1.1.0'
         functionType: 'http'
@@ -35,7 +35,7 @@ jobs:
         startDelay: 5
 
     - name: Run event conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.1.0
+      uses: GoogleCloudPlatform/functions-framework-conformance/action
       with:
         version: 'v1.1.0'
         functionType: 'legacyevent'
@@ -45,7 +45,7 @@ jobs:
         startDelay: 5
 
     - name: Run CloudEvent conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.1.0
+      uses: GoogleCloudPlatform/functions-framework-conformance/action
       with:
         version: 'v1.1.0'
         functionType: 'cloudevent'
