@@ -1,4 +1,8 @@
-# Functions Framework for Go  [![Build Status](https://travis-ci.com/GoogleCloudPlatform/functions-framework-go.svg?branch=master)](https://travis-ci.com/GoogleCloudPlatform/functions-framework-go) [![GoDoc](https://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go?status.svg)](http://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go) [![Go version](https://img.shields.io/badge/go-v1.11+-blue)](https://golang.org/dl/#stable)
+# Functions Framework for Go
+
+[![GoDoc](https://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go?status.svg)](http://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go) [![Go version](https://img.shields.io/badge/go-v1.11+-blue)](https://golang.org/dl/#stable)
+
+[![Go unit CI][ff_go_unit_img]][ff_go_unit_link] [![Go lint CI][ff_go_lint_img]][ff_go_lint_link] [![Go conformace CI][ff_go_conformance_img]][ff_go_conformance_link]
 
 An open source FaaS (Function as a Service) framework for writing portable
 Go functions, brought to you by the Google Cloud Functions team.
@@ -211,3 +215,10 @@ func CloudEventFunction(ctx context.Context, e cloudevents.Event) error {
 These functions are registered with the handler via `funcframework.RegisterCloudEventFunctionContext`.
 
 To learn more about CloudEvents, see the [Go SDK for CloudEvents](https://github.com/cloudevents/sdk-go).
+
+[ff_go_unit_img]: https://github.com/GoogleCloudPlatform/functions-framework-go/workflows/Go%20Unit%20CI/badge.svg
+[ff_go_unit_link]: https://github.com/GoogleCloudPlatform/functions-framework-go/actions?query=workflow%3A"Go+Unit+CI"
+[ff_go_lint_img]: https://github.com/GoogleCloudPlatform/functions-framework-go/workflows/Go%20Lint%20CI/badge.svg
+[ff_go_lint_link]: https://github.com/GoogleCloudPlatform/functions-framework-go/actions?query=workflow%3A"Go+Lint+CI"
+[ff_go_conformance_img]: https://github.com/GoogleCloudPlatform/functions-framework-go/workflows/Go%20Conformance%20CI/badge.svg
+[ff_go_conformance_link]: https://github.com/GoogleCloudPlatform/functions-framework-go/actions?query=workflow%3A"Go+Conformance+CI"
