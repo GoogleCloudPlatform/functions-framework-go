@@ -93,7 +93,7 @@ func TestEventFunction(t *testing.T) {
 			fn: func(c context.Context, s customStruct) error {
 				return nil
 			},
-			status: http.StatusUnsupportedMediaType,
+			status: http.StatusBadRequest,
 			header: "crash",
 		},
 		{
