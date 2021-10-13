@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"time"
 
 	"cloud.google.com/go/functions/metadata"
 	"github.com/GoogleCloudPlatform/functions-framework-go/internal/events/pubsub"
@@ -48,10 +47,10 @@ var (
 		"providers/firebase.auth/eventTypes/user.create":           "google.firebase.auth.user.v1.created",
 		"providers/firebase.auth/eventTypes/user.delete":           "google.firebase.auth.user.v1.deleted",
 		"providers/google.firebase.analytics/eventTypes/event.log": "google.firebase.analytics.log.v1.written",
-		"providers/google.firebase.database/eventTypes/ref.create": "google.firebase.database.document.v1.created",
-		"providers/google.firebase.database/eventTypes/ref.write":  "google.firebase.database.document.v1.written",
-		"providers/google.firebase.database/eventTypes/ref.update": "google.firebase.database.document.v1.updated",
-		"providers/google.firebase.database/eventTypes/ref.delete": "google.firebase.database.document.v1.deleted",
+		"providers/google.firebase.database/eventTypes/ref.create": "google.firebase.database.ref.v1.created",
+		"providers/google.firebase.database/eventTypes/ref.write":  "google.firebase.database.ref.v1.written",
+		"providers/google.firebase.database/eventTypes/ref.update": "google.firebase.database.ref.v1.updated",
+		"providers/google.firebase.database/eventTypes/ref.delete": "google.firebase.database.ref.v1.deleted",
 		"providers/cloud.storage/eventTypes/object.change":         "google.cloud.storage.object.v1.finalized",
 	}
 
@@ -72,7 +71,7 @@ var (
 	// for the resource and the second for the subject. See splitResource for more info.
 	ceServiceToResourceRe = map[string]*regexp.Regexp{
 		firebaseCEService:   regexp.MustCompile("^(projects/[^/]+)/(events/[^/]+)$"),
-		firebaseDBCEService: regexp.MustCompile("^(projects/_/instances/[^/]+)/(refs/.+)$"),
+		firebaseDBCEService: regexp.MustCompile("^projects/_/(instances/[^/]+)/(refs/.+)$"),
 		firestoreCEService:  regexp.MustCompile("^(projects/[^/]+/databases/\\(default\\))/(documents/.+)$"),
 		storageCEService:    regexp.MustCompile("^(projects/_/buckets/[^/]+)/(objects/.+)$"),
 	}
@@ -167,7 +166,7 @@ func convertBackgroundToCloudEvent(ceHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// If the incoming request is not CloudEvent, make it so.
 		if r.Header.Get(ceIDHeader) == "" && !strings.Contains(r.Header.Get(contentTypeHeader), "cloudevents") {
-			rc, err := createCloudEventRequest(r)
+			rc, err := convertBackgroundToCloudEventRequest(r)
 			if err != nil {
 				writeHTTPErrorResponse(w, rc, crashStatus, fmt.Sprintf("%v", err))
 				return
@@ -262,7 +261,7 @@ func firebaseAuthSubject(data interface{}) (string, error) {
 	return fmt.Sprintf("users/%v", d["uid"]), nil
 }
 
-func createCloudEventRequest(r *http.Request) (int, error) {
+func convertBackgroundToCloudEventRequest(r *http.Request) (int, error) {
 	body, rc, err := readHTTPRequestBody(r)
 	if err != nil {
 		return rc, err
@@ -308,28 +307,12 @@ func createCloudEventRequest(r *http.Request) (int, error) {
 		return http.StatusUnsupportedMediaType, err
 	}
 
-	// Handle Pub/Sub events.
-	if service == pubSubCEService {
-		// In a CloudEvent "data" is wrapped by "message".
-		d = struct {
-			Message interface{} `json:"message"`
-		}{
-			Message: d,
-		}
-	}
-
-	// Handle Firebase Auth events.
-	if service == firebaseAuthCEService {
-		convertBackgroundFirebaseAuthMetadata(d)
-
-		if s, err := firebaseAuthSubject(d); err == nil {
-			subject = s
-		}
-	}
-
+	// CloudEvents timestamp has higher precision than default
+	// golang timestamp format
+	time := md.Timestamp.Format("2006-01-02T15:04:05.000Z")
 	ce := map[string]interface{}{
 		"id":              md.EventID,
-		"time":            md.Timestamp.Format(time.RFC3339),
+		"time":            time,
 		"specversion":     ceSpecVersion,
 		"datacontenttype": "application/json",
 		"type":            t,
@@ -341,9 +324,51 @@ func createCloudEventRequest(r *http.Request) (int, error) {
 		ce["subject"] = subject
 	}
 
+	switch service {
+	case pubSubCEService:
+		data, ok := d.(map[string]interface{})
+		if !ok {
+			return http.StatusBadRequest, fmt.Errorf(`invalid "data" field in event payload, "data": %q`, d)
+		}
+
+		data["publishTime"] = time
+		data["messageId"] = md.EventID
+
+		// In a Pub/Sub CloudEvent "data" is wrapped by "message".
+		ce["data"] = struct {
+			Message interface{} `json:"message"`
+		}{
+			Message: data,
+		}
+	case firebaseAuthCEService:
+		convertBackgroundFirebaseAuthMetadata(d)
+
+		if s, err := firebaseAuthSubject(d); err == nil && s != "" {
+			ce["subject"] = s
+		}
+	case firebaseDBCEService:
+		var dbDomain struct {
+			Domain string `json:"domain"`
+		}
+		if err := json.Unmarshal(body, &dbDomain); err != nil {
+			return http.StatusBadRequest, fmt.Errorf("unable to unmarshal %q domain from event payload %q: %v", firebaseDBCEService, string(body), err)
+		}
+
+		location := "us-central1"
+		if dbDomain.Domain != "firebaseio.com" {
+			domainSplit := strings.SplitN(dbDomain.Domain, ".", 2)
+			if len(domainSplit) != 2 {
+				return http.StatusBadRequest, fmt.Errorf("invalid %q domain: %q", firebaseDBCEService, dbDomain.Domain)
+			}
+			location = domainSplit[0]
+		}
+
+		ce["source"] = fmt.Sprintf("//%s/projects/_/locations/%s/%s", service, location, resource)
+	}
+
 	encoded, err := json.Marshal(ce)
 	if err != nil {
-		return http.StatusBadRequest, fmt.Errorf("Unable to marshal CloudEvent %v: %v", ce, err)
+		return http.StatusBadRequest, fmt.Errorf("unable to marshal CloudEvent %v: %v", ce, err)
 	}
 
 	r.Body = ioutil.NopCloser(bytes.NewReader(encoded))
