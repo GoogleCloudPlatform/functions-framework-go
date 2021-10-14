@@ -155,9 +155,9 @@ func registerCloudEventFunction(ctx context.Context, path string, fn func(contex
 }
 
 func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{}) {
-	body, responseCode, err := readHTTPRequestBody(r)
+	body, err := readHTTPRequestBody(r)
 	if err != nil {
-		writeHTTPErrorResponse(w, responseCode, crashStatus, fmt.Sprintf("%v", err))
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("%v", err))
 		return
 	}
 
@@ -174,17 +174,17 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 	runUserFunction(w, r, body, fn)
 }
 
-func readHTTPRequestBody(r *http.Request) ([]byte, int, error) {
+func readHTTPRequestBody(r *http.Request) ([]byte, error) {
 	if r.Body == nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("request body not found")
+		return nil, fmt.Errorf("request body not found")
 	}
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return nil, http.StatusUnsupportedMediaType, fmt.Errorf("Could not read request body %s: %v", r.Body, err)
+		return nil, fmt.Errorf("could not read request body %s: %v", r.Body, err)
 	}
 
-	return body, http.StatusOK, nil
+	return body, nil
 }
 
 func runUserFunction(w http.ResponseWriter, r *http.Request, data []byte, fn interface{}) {
@@ -194,7 +194,7 @@ func runUserFunction(w http.ResponseWriter, r *http.Request, data []byte, fn int
 func runUserFunctionWithContext(ctx context.Context, w http.ResponseWriter, r *http.Request, data []byte, fn interface{}) {
 	argVal := reflect.New(reflect.TypeOf(fn).In(1))
 	if err := json.Unmarshal(data, argVal.Interface()); err != nil {
-		writeHTTPErrorResponse(w, http.StatusUnsupportedMediaType, crashStatus, fmt.Sprintf("Error: %s, while converting event data: %s", err.Error(), string(data)))
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, while converting event data: %s", err.Error(), string(data)))
 		return
 	}
 
@@ -213,7 +213,7 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 	if !strings.HasSuffix(msg, "\n") {
 		msg += "\n"
 	}
-	fmt.Fprintf(os.Stderr, msg)
+	fmt.Fprint(os.Stderr, msg)
 
 	// Flush stdout and stderr when running on GCF. This must be done before writing
 	// the HTTP response in order for all logs to appear in Stackdriver.
@@ -224,5 +224,5 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 
 	w.Header().Set(functionStatusHeader, status)
 	w.WriteHeader(statusCode)
-	fmt.Fprintf(w, msg)
+	fmt.Fprint(w, msg)
 }

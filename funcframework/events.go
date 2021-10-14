@@ -166,9 +166,8 @@ func convertBackgroundToCloudEvent(ceHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// If the incoming request is not CloudEvent, make it so.
 		if r.Header.Get(ceIDHeader) == "" && !strings.Contains(r.Header.Get(contentTypeHeader), "cloudevents") {
-			rc, err := convertBackgroundToCloudEventRequest(r)
-			if err != nil {
-				writeHTTPErrorResponse(w, rc, crashStatus, fmt.Sprintf("%v", err))
+			if err := convertBackgroundToCloudEventRequest(r); err != nil {
+				writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("%v", err))
 				return
 			}
 		}
@@ -261,26 +260,26 @@ func firebaseAuthSubject(data interface{}) (string, error) {
 	return fmt.Sprintf("users/%v", d["uid"]), nil
 }
 
-func convertBackgroundToCloudEventRequest(r *http.Request) (int, error) {
-	body, rc, err := readHTTPRequestBody(r)
+func convertBackgroundToCloudEventRequest(r *http.Request) error {
+	body, err := readHTTPRequestBody(r)
 	if err != nil {
-		return rc, err
+		return err
 	}
 
 	md, d, err := getBackgroundEvent(body, r.URL.Path)
 	if err != nil {
-		return http.StatusUnsupportedMediaType, fmt.Errorf("parsing background event body %s: %v", string(body), err)
+		return fmt.Errorf("parsing background event body %s: %v", string(body), err)
 	}
 
 	if md == nil || d == nil {
-		return http.StatusUnsupportedMediaType, fmt.Errorf("unable to extract background event from %s", string(body))
+		return fmt.Errorf("unable to extract background event from %s", string(body))
 	}
 
 	r.Header.Set(contentTypeHeader, jsonContentType)
 
 	t, ok := typeBackgroundToCloudEvent[md.EventType]
 	if !ok {
-		return http.StatusUnsupportedMediaType, fmt.Errorf("unable to find CloudEvent equivalent event type for %s", md.EventType)
+		return fmt.Errorf("unable to find CloudEvent equivalent event type for %s", md.EventType)
 	}
 
 	service := md.Resource.Service
@@ -292,7 +291,7 @@ func convertBackgroundToCloudEventRequest(r *http.Request) (int, error) {
 		}
 		// If service is still empty, we didn't find a match in the map. Return the error.
 		if service == "" {
-			return http.StatusUnsupportedMediaType, fmt.Errorf("unable to find CloudEvent equivalent service for %s", md.EventType)
+			return fmt.Errorf("unable to find CloudEvent equivalent service for %s", md.EventType)
 		}
 	}
 
@@ -304,7 +303,7 @@ func convertBackgroundToCloudEventRequest(r *http.Request) (int, error) {
 	var subject string
 	resource, subject, err = splitResource(service, resource)
 	if err != nil {
-		return http.StatusUnsupportedMediaType, err
+		return err
 	}
 
 	// CloudEvents timestamp has higher precision than default
@@ -328,7 +327,7 @@ func convertBackgroundToCloudEventRequest(r *http.Request) (int, error) {
 	case pubSubCEService:
 		data, ok := d.(map[string]interface{})
 		if !ok {
-			return http.StatusBadRequest, fmt.Errorf(`invalid "data" field in event payload, "data": %q`, d)
+			return fmt.Errorf(`invalid "data" field in event payload, "data": %q`, d)
 		}
 
 		data["publishTime"] = time
@@ -351,14 +350,14 @@ func convertBackgroundToCloudEventRequest(r *http.Request) (int, error) {
 			Domain string `json:"domain"`
 		}
 		if err := json.Unmarshal(body, &dbDomain); err != nil {
-			return http.StatusBadRequest, fmt.Errorf("unable to unmarshal %q domain from event payload %q: %v", firebaseDBCEService, string(body), err)
+			return fmt.Errorf("unable to unmarshal %q domain from event payload %q: %v", firebaseDBCEService, string(body), err)
 		}
 
 		location := "us-central1"
 		if dbDomain.Domain != "firebaseio.com" {
 			domainSplit := strings.SplitN(dbDomain.Domain, ".", 2)
 			if len(domainSplit) != 2 {
-				return http.StatusBadRequest, fmt.Errorf("invalid %q domain: %q", firebaseDBCEService, dbDomain.Domain)
+				return fmt.Errorf("invalid %q domain: %q", firebaseDBCEService, dbDomain.Domain)
 			}
 			location = domainSplit[0]
 		}
@@ -368,10 +367,10 @@ func convertBackgroundToCloudEventRequest(r *http.Request) (int, error) {
 
 	encoded, err := json.Marshal(ce)
 	if err != nil {
-		return http.StatusBadRequest, fmt.Errorf("unable to marshal CloudEvent %v: %v", ce, err)
+		return fmt.Errorf("unable to marshal CloudEvent %v: %v", ce, err)
 	}
 
 	r.Body = ioutil.NopCloser(bytes.NewReader(encoded))
 	r.Header.Set(contentLengthHeader, fmt.Sprint(len(encoded)))
-	return http.StatusOK, nil
+	return nil
 }

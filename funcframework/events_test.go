@@ -466,12 +466,8 @@ func TestConvertBackgroundToCloudEventRequest(t *testing.T) {
 				t.Fatalf("unable to create test request data: %v", err)
 			}
 
-			rc, err := convertBackgroundToCloudEventRequest(req)
-			if err != nil {
+			if err := convertBackgroundToCloudEventRequest(req); err != nil {
 				t.Fatalf("unexpected error creating CloudEvent request: %v", err)
-			}
-			if rc != http.StatusOK {
-				t.Errorf("incorrect response code, got %d, want %d", rc, http.StatusOK)
 			}
 
 			gotBody, err := ioutil.ReadAll(req.Body)
