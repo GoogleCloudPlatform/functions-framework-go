@@ -133,6 +133,12 @@ func registerEventFunction(path string, fn interface{}, h *http.ServeMux) error 
 		}
 		defer recoverPanicHTTP(w, "Function panic")
 
+		if shouldConvertCloudEventToBackgroundRequest(r) {
+			if err := convertCloudEventToBackgroundRequest(r); err != nil {
+				writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("error converting CloudEvent to Background Event: %v", err))
+			}
+		}
+
 		handleEventFunction(w, r, fn)
 	})
 	return nil

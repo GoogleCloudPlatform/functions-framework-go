@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/functions/metadata"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -496,6 +497,411 @@ func TestConvertBackgroundToCloudEventRequest(t *testing.T) {
 
 			if got := req.Header.Get(contentLengthHeader); got != fmt.Sprint(len(gotBody)) {
 				t.Errorf("incorrect request content length header, got %s, want %s", got, fmt.Sprint(len(gotBody)))
+			}
+		})
+	}
+}
+
+func TestConvertCloudEventToBackgroundRequest(t *testing.T) {
+	tcs := []struct {
+		name   string
+		ceJSON string
+		wantBE string
+	}{
+		{
+			name: "pubsub",
+			ceJSON: `{
+				"specversion": "1.0",
+				"type": "google.cloud.pubsub.topic.v1.messagePublished",
+				"source": "//pubsub.googleapis.com/projects/sample-project/topics/gcf-test",
+				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				"time": "2020-09-29T11:32:00.000Z",
+				"datacontenttype": "application/json",
+				"data": {
+				  "subscription": "projects/sample-project/subscriptions/sample-subscription",
+				  "message": {
+					"@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
+					"messageId": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+					"publishTime": "2020-09-29T11:32:00.000Z",
+					"attributes": {
+					   "attr1":"attr1-value"
+					},
+					"data": "dGVzdCBtZXNzYWdlIDM="
+				  }
+				}
+			  }`,
+			wantBE: `{
+				"context": {
+				   "eventId":"aaaaaa-1111-bbbb-2222-cccccccccccc",
+				   "timestamp":"2020-09-29T11:32:00.000Z",
+				   "eventType":"google.pubsub.topic.publish",
+				   "resource":{
+					 "service":"pubsub.googleapis.com",
+					 "name":"projects/sample-project/topics/gcf-test",
+					 "type":"type.googleapis.com/google.pubsub.v1.PubsubMessage"
+				   }
+				},
+				"data": {
+				   "@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
+				   "attributes": {
+					  "attr1":"attr1-value"
+				   },
+				   "data": "dGVzdCBtZXNzYWdlIDM="
+				}
+			 }`,
+		},
+		{
+			name: "firebase auth event",
+			ceJSON: `{
+				"specversion": "1.0",
+				"type": "google.firebase.auth.user.v1.created",
+				"source": "//firebaseauth.googleapis.com/projects/my-project-id",
+				"subject": "users/UUpby3s4spZre6kHsgVSPetzQ8l2",
+				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				"time": "2020-09-29T11:32:00.000Z",
+				"datacontenttype": "application/json",
+				"data": {
+				  "email": "test@nowhere.com",
+				  "metadata": {
+					"createTime": "2020-05-26T10:42:27Z",
+					"lastSignInTime": "2020-10-24T11:00:00Z"
+				  },
+				  "providerData": [
+					{
+					  "email": "test@nowhere.com",
+					  "providerId": "password",
+					  "uid": "test@nowhere.com"
+					}
+				  ],
+				  "uid": "UUpby3s4spZre6kHsgVSPetzQ8l2"
+				}
+			  }`,
+			wantBE: `{
+				"data": {
+				  "email": "test@nowhere.com",
+				  "metadata": {
+					"createdAt": "2020-05-26T10:42:27Z",
+					"lastSignedInAt": "2020-10-24T11:00:00Z"
+				  },
+				  "providerData": [
+					{
+					  "email": "test@nowhere.com",
+					  "providerId": "password",
+					  "uid": "test@nowhere.com"
+					}
+				  ],
+				  "uid": "UUpby3s4spZre6kHsgVSPetzQ8l2"
+				},
+				"context": {
+				  "eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				  "eventType": "providers/firebase.auth/eventTypes/user.create",
+				  "resource": "projects/my-project-id",
+				  "timestamp": "2020-09-29T11:32:00.000Z"
+				}
+			  }`,
+		},
+		{
+			name: "firebase db event firebaseio.com domain",
+			ceJSON: `{
+				"specversion": "1.0",
+				"type": "google.firebase.database.ref.v1.written",
+				"source": "//firebasedatabase.googleapis.com/projects/_/locations/us-central1/instances/my-project-id",
+				"subject": "refs/gcf-test/xyz",
+				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				"time": "2020-09-29T11:32:00.000Z",
+				"datacontenttype": "application/json",
+				"data": {
+				  "data": null,
+				  "delta": {
+					"grandchild": "other"
+				  }
+				}
+			  }
+			  `,
+			wantBE: `{
+				"data": {
+				  "data": null,
+				  "delta": {
+					"grandchild": "other"
+				  }
+				},
+				"context": {
+				  "resource": "projects/_/instances/my-project-id/refs/gcf-test/xyz",
+				  "timestamp": "2020-09-29T11:32:00.000Z",
+				  "eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				  "eventType": "providers/google.firebase.database/eventTypes/ref.write" 
+				}
+			  }`,
+		},
+		{
+			name: "firebase db event localized domain",
+			ceJSON: `{
+				"specversion": "1.0",
+				"type": "google.firebase.database.ref.v1.written",
+				"source": "//firebasedatabase.googleapis.com/projects/_/locations/europe-west1/instances/my-project-id",
+				"subject": "refs/gcf-test/xyz",
+				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				"time": "2020-09-29T11:32:00.000Z",
+				"datacontenttype": "application/json",
+				"data": {
+				  "data": {
+					"grandchild": "other"
+				  },
+				  "delta": {
+					"grandchild": "other changed"
+				  }
+				}
+			  }`,
+			wantBE: `{
+				"data": {
+				  "data": {
+					"grandchild": "other"
+				  },
+				  "delta": {
+					"grandchild": "other changed"
+				  }
+				},
+				"context": {
+				  "resource": "projects/_/instances/my-project-id/refs/gcf-test/xyz",
+				  "timestamp": "2020-09-29T11:32:00.000Z",
+				  "eventType": "providers/google.firebase.database/eventTypes/ref.write",
+				  "eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc"
+				}
+			  }`,
+		},
+		{
+			name: "cloud storage event",
+			ceJSON: `{
+				"specversion": "1.0",
+				"type": "google.cloud.storage.object.v1.finalized",
+				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
+				"subject": "objects/folder/Test.cs",
+				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				"time": "2020-09-29T11:32:00.000Z",
+				"datacontenttype": "application/json",
+				"data": {
+				  "bucket": "some-bucket",
+				  "contentType": "text/plain",
+				  "crc32c": "rTVTeQ==",
+				  "etag": "CNHZkbuF/ugCEAE=",
+				  "generation": "1587627537231057",
+				  "id": "some-bucket/folder/Test.cs/1587627537231057",
+				  "kind": "storage#object",
+				  "md5Hash": "kF8MuJ5+CTJxvyhHS1xzRg==",
+				  "mediaLink": "https://www.googleapis.com/download/storage/v1/b/some-bucket/o/folder%2FTest.cs?generation=1587627537231057\u0026alt=media",
+				  "metageneration": "1",
+				  "name": "folder/Test.cs",
+				  "selfLink": "https://www.googleapis.com/storage/v1/b/some-bucket/o/folder/Test.cs",
+				  "size": "352",
+				  "storageClass": "MULTI_REGIONAL",
+				  "timeCreated": "2020-04-23T07:38:57.230Z",
+				  "timeStorageClassUpdated": "2020-04-23T07:38:57.230Z",
+				  "updated": "2020-04-23T07:38:57.230Z"
+				}
+			  }`,
+			wantBE: `{
+				"context": {
+				   "eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				   "timestamp": "2020-09-29T11:32:00.000Z",
+				   "eventType": "google.storage.object.finalize",
+				   "resource": {
+					  "service": "storage.googleapis.com",
+					  "name": "projects/_/buckets/some-bucket/objects/folder/Test.cs",
+					  "type": "storage#object"
+				   }
+				},
+				"data": {
+				   "bucket": "some-bucket",
+				   "contentType": "text/plain",
+				   "crc32c": "rTVTeQ==",
+				   "etag": "CNHZkbuF/ugCEAE=",
+				   "generation": "1587627537231057",
+				   "id": "some-bucket/folder/Test.cs/1587627537231057",
+				   "kind": "storage#object",
+				   "md5Hash": "kF8MuJ5+CTJxvyhHS1xzRg==",
+				   "mediaLink": "https://www.googleapis.com/download/storage/v1/b/some-bucket/o/folder%2FTest.cs?generation=1587627537231057\u0026alt=media",
+				   "metageneration": "1",
+				   "name": "folder/Test.cs",
+				   "selfLink": "https://www.googleapis.com/storage/v1/b/some-bucket/o/folder/Test.cs",
+				   "size": "352",
+				   "storageClass": "MULTI_REGIONAL",
+				   "timeCreated": "2020-04-23T07:38:57.230Z",
+				   "timeStorageClassUpdated": "2020-04-23T07:38:57.230Z",
+				   "updated": "2020-04-23T07:38:57.230Z"
+				}
+			  }`,
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			ce := cloudevents.NewEvent()
+			if err := json.Unmarshal([]byte(tc.ceJSON), &ce); err != nil {
+				t.Fatalf("unable to marshal input CloudEvent JSON: %s, error: %v", tc.ceJSON, err)
+			}
+
+			req, err := http.NewRequest(http.MethodPost, "example.com", bytes.NewBuffer(ce.Data()))
+			if err != nil {
+				t.Fatalf("unable to create test request data: %v", err)
+			}
+
+			req.Header.Set("ce-type", ce.Type())
+			req.Header.Set("ce-source", ce.Source())
+			req.Header.Set("ce-id", ce.ID())
+			req.Header.Set("ce-subject", ce.Subject())
+			req.Header.Set("ce-time", ce.Time().Format(timeFmt))
+			req.Header.Set("ce-specversion", ce.SpecVersion())
+
+			if err := convertCloudEventToBackgroundRequest(req); err != nil {
+				t.Fatalf("unexpected error converting CloudEvent to Background event request: %v", err)
+			}
+
+			gotBody, err := ioutil.ReadAll(req.Body)
+			if err != nil {
+				t.Fatalf("unable to read got request body: %v", err)
+			}
+
+			// Convert human-readable string into an easily comparable object
+			// so cmp.Diff output is easier to read
+			var wantObj map[string]interface{}
+			if err := json.Unmarshal([]byte(tc.wantBE), &wantObj); err != nil {
+				t.Fatalf("test wantBE is invalid JSON: %q, err: %v", tc.wantBE, err)
+			}
+			var gotObj map[string]interface{}
+			if err := json.Unmarshal(gotBody, &gotObj); err != nil {
+				t.Fatalf("createCloudEventRequest() created invalid JSON: %q, err: %v", string(gotBody), err)
+			}
+
+			if diff := cmp.Diff(wantObj, gotObj); diff != "" {
+				t.Errorf("createCloudEventRequest() mismatch (-want +got):\n%s", diff)
+			}
+
+			if got := req.Header.Get(contentTypeHeader); got != jsonContentType {
+				t.Errorf("incorrect request content type header, got %s, want %s", got, jsonContentType)
+			}
+
+			if got := req.Header.Get(contentLengthHeader); got != fmt.Sprint(len(gotBody)) {
+				t.Errorf("incorrect request content length header, got %s, want %s", got, fmt.Sprint(len(gotBody)))
+			}
+		})
+	}
+}
+
+func TestShouldConvertCloudEventToBackgroundRequest(t *testing.T) {
+	tcs := []struct {
+		name          string
+		ceHeaderJSON  string
+		shouldConvert bool
+	}{
+		{
+			name: "standard",
+			ceHeaderJSON: `{
+				"specversion": "1.0",
+				"type": "google.cloud.storage.object.v1.finalized",
+				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
+				"subject": "objects/folder/Test.cs",
+				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				"time": "2020-09-29T11:32:00.000Z",
+				"datacontenttype": "application/json"
+			  }`,
+			shouldConvert: true,
+		},
+		{
+			name: "missing extraneous header ok",
+			ceHeaderJSON: `{
+				"specversion": "1.0",
+				"type": "google.cloud.storage.object.v1.finalized",
+				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
+				"subject": "objects/folder/Test.cs",
+				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				"datacontenttype": "application/json"
+			  }`,
+			shouldConvert: true,
+		},
+		{
+			name: "invalid type",
+			ceHeaderJSON: `{
+				"specversion": "1.0",
+				"type": "google.invalid.type",
+				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
+				"subject": "objects/folder/Test.cs",
+				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				"time": "2020-09-29T11:32:00.000Z",
+				"datacontenttype": "application/json"
+			  }`,
+			shouldConvert: false,
+		},
+		{
+			name: "missing specversion",
+			ceHeaderJSON: `{
+				"type": "google.cloud.storage.object.v1.finalized",
+				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
+				"subject": "objects/folder/Test.cs",
+				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				"time": "2020-09-29T11:32:00.000Z",
+				"datacontenttype": "application/json"
+			  }`,
+			shouldConvert: false,
+		},
+		{
+			name: "missing type",
+			ceHeaderJSON: `{
+				"specversion": "1.0",
+				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
+				"subject": "objects/folder/Test.cs",
+				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				"time": "2020-09-29T11:32:00.000Z",
+				"datacontenttype": "application/json"
+			  }`,
+			shouldConvert: false,
+		},
+		{
+			name: "missing source",
+			ceHeaderJSON: `{
+				"specversion": "1.0",
+				"subject": "objects/folder/Test.cs",
+				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				"time": "2020-09-29T11:32:00.000Z",
+				"datacontenttype": "application/json"
+			  }`,
+			shouldConvert: false,
+		},
+		{
+			name: "missing ID",
+			ceHeaderJSON: `{
+				"specversion": "1.0",
+				"type": "google.cloud.storage.object.v1.finalized",
+				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
+				"subject": "objects/folder/Test.cs",
+				"time": "2020-09-29T11:32:00.000Z",
+				"datacontenttype": "application/json"
+			  }`,
+			shouldConvert: false,
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			var headers map[string]string
+			if err := json.Unmarshal([]byte(tc.ceHeaderJSON), &headers); err != nil {
+				t.Fatalf("unable to marshal input CloudEvent JSON: %s, error: %v", tc.ceHeaderJSON, err)
+			}
+
+			req, err := http.NewRequest(http.MethodPost, "example.com", bytes.NewBufferString(""))
+			if err != nil {
+				t.Fatalf("unable to create test request data: %v", err)
+			}
+
+			req.Header.Set("ce-type", headers["type"])
+			req.Header.Set("ce-source", headers["source"])
+			req.Header.Set("ce-id", headers["id"])
+			req.Header.Set("ce-subject", headers["subject"])
+			req.Header.Set("ce-time", headers["time"])
+			req.Header.Set("ce-specversion", headers["specversion"])
+
+			got := shouldConvertCloudEventToBackgroundRequest(req)
+			if got != tc.shouldConvert {
+				t.Errorf("shouldConvertCloudEventToBackgroundRequest() = %t, want %t", got, tc.shouldConvert)
 			}
 		})
 	}

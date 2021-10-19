@@ -30,6 +30,11 @@ const (
 	firestoreCEService    = "firestore.googleapis.com"
 	pubSubCEService       = "pubsub.googleapis.com"
 	storageCEService      = "storage.googleapis.com"
+
+	pubsubMessageType = "type.googleapis.com/google.pubsub.v1.PubsubMessage"
+
+	// timeFmt is the precision that CloudEvents timestamps require.
+	timeFmt = "2006-01-02T15:04:05.000Z"
 )
 
 var (
@@ -52,6 +57,25 @@ var (
 		"providers/google.firebase.database/eventTypes/ref.update": "google.firebase.database.ref.v1.updated",
 		"providers/google.firebase.database/eventTypes/ref.delete": "google.firebase.database.ref.v1.deleted",
 		"providers/cloud.storage/eventTypes/object.change":         "google.cloud.storage.object.v1.finalized",
+	}
+
+	typeCloudToBackgroundEvent = map[string]string{
+		"google.cloud.pubsub.topic.v1.messagePublished":  "google.pubsub.topic.publish",
+		"google.cloud.storage.object.v1.finalized":       "google.storage.object.finalize",
+		"google.cloud.storage.object.v1.deleted":         "google.storage.object.delete",
+		"google.cloud.storage.object.v1.archived":        "google.storage.object.archive",
+		"google.cloud.storage.object.v1.metadataUpdated": "google.storage.object.metadataUpdate",
+		"google.cloud.firestore.document.v1.written":     "providers/cloud.firestore/eventTypes/document.write",
+		"google.cloud.firestore.document.v1.created":     "providers/cloud.firestore/eventTypes/document.create",
+		"google.cloud.firestore.document.v1.updated":     "providers/cloud.firestore/eventTypes/document.update",
+		"google.cloud.firestore.document.v1.deleted":     "providers/cloud.firestore/eventTypes/document.delete",
+		"google.firebase.auth.user.v1.created":           "providers/firebase.auth/eventTypes/user.create",
+		"google.firebase.auth.user.v1.deleted":           "providers/firebase.auth/eventTypes/user.delete",
+		"google.firebase.analytics.log.v1.written":       "providers/google.firebase.analytics/eventTypes/event.log",
+		"google.firebase.database.ref.v1.created":        "providers/google.firebase.database/eventTypes/ref.create",
+		"google.firebase.database.ref.v1.written":        "providers/google.firebase.database/eventTypes/ref.write",
+		"google.firebase.database.ref.v1.updated":        "providers/google.firebase.database/eventTypes/ref.update",
+		"google.firebase.database.ref.v1.deleted":        "providers/google.firebase.database/eventTypes/ref.delete",
 	}
 
 	serviceBackgroundToCloudEvent = map[string]string{
@@ -306,9 +330,7 @@ func convertBackgroundToCloudEventRequest(r *http.Request) error {
 		return err
 	}
 
-	// CloudEvents timestamp has higher precision than default
-	// golang timestamp format
-	time := md.Timestamp.Format("2006-01-02T15:04:05.000Z")
+	time := md.Timestamp.Format(timeFmt)
 	ce := map[string]interface{}{
 		"id":              md.EventID,
 		"time":            time,
@@ -371,6 +393,154 @@ func convertBackgroundToCloudEventRequest(r *http.Request) error {
 	}
 
 	r.Body = ioutil.NopCloser(bytes.NewReader(encoded))
+	r.Header.Set(contentLengthHeader, fmt.Sprint(len(encoded)))
+	return nil
+}
+
+func shouldConvertCloudEventToBackgroundRequest(r *http.Request) bool {
+	_, ok := typeCloudToBackgroundEvent[r.Header.Get("ce-type")]
+	return ok &&
+		r.Header.Get("ce-source") != "" &&
+		r.Header.Get("ce-specversion") != "" &&
+		r.Header.Get("ce-id") != ""
+}
+
+func convertCloudEventToBackgroundRequest(r *http.Request) error {
+	body, err := readHTTPRequestBody(r)
+	if err != nil {
+		return err
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		return fmt.Errorf("unable to unmarshal CloudEvent data: %s, error: %v", string(body), err)
+	}
+
+	ceCtx := struct {
+		Type    string
+		Source  string
+		Subject string
+		Id      string
+		Time    string
+	}{
+		Type:    r.Header.Get("ce-type"),
+		Source:  r.Header.Get("ce-source"),
+		Subject: r.Header.Get("ce-subject"),
+		Id:      r.Header.Get("ce-id"),
+		Time:    r.Header.Get("ce-time"),
+	}
+
+	eventType, ok := typeCloudToBackgroundEvent[ceCtx.Type]
+	if !ok {
+		return fmt.Errorf("incoming event has unsupported event type: %q", ceCtx.Type)
+	}
+
+	/*
+		Ex 1: "//firebaseauth.googleapis.com/projects/my-project-id"
+		matches: ["//firebaseauth.googleapis.com/projects/my-project-id",
+		"firebaseauth.googleapis.com", "projects/my-project-id"]
+
+		Ex 2: "//pubsub.googleapis.com/projects/sample-project/topics/gcf-test"
+		matches: ["//pubsub.googleapis.com/projects/sample-project/topics/gcf-test",
+		"pubsub.googleapis.com", "projects/sample-project/topics/gcf-test"]
+	*/
+	matches := regexp.MustCompile(`//([^/]+)/(.+)`).FindStringSubmatch(ceCtx.Source)
+	if len(matches) != 3 {
+		return fmt.Errorf("unable to parse CloudEvent source into resource service and name: %q", ceCtx.Source)
+	}
+
+	// 0th match is the entire input string
+	service := matches[1]
+	name := matches[2]
+
+	resource := fmt.Sprintf("%s/%s", name, ceCtx.Subject)
+
+	// Use custom metadata struct to control the exact formatting when
+	// fields are serialized to JSON.
+	type Metadata struct {
+		EventID   string `json:"eventId"`
+		Timestamp string `json:"timestamp"`
+		EventType string `json:"eventType"`
+		// Resource can be a single string or a struct, depending on the
+		// event type.
+		Resource interface{} `json:"resource"`
+	}
+
+	type backgroundEvent struct {
+		Data     map[string]interface{} `json:"data"`
+		Metadata `json:"context"`
+	}
+
+	be := backgroundEvent{
+		Data: data,
+		Metadata: Metadata{
+			EventID:   ceCtx.Id,
+			Timestamp: ceCtx.Time,
+			EventType: eventType,
+			Resource:  resource,
+		},
+	}
+
+	type splitResource struct {
+		Name    string      `json:"name"`
+		Service string      `json:"service"`
+		Type    interface{} `json:"type"`
+	}
+	switch service {
+	case pubSubCEService:
+		be.Resource = splitResource{
+			Name:    name,
+			Service: service,
+			Type:    pubsubMessageType,
+		}
+
+		// Lift the "message" field into the main "data" field.
+		if message, ok := be.Data["message"]; ok {
+			if md, ok := message.(map[string]interface{}); ok {
+				be.Data = md
+			}
+		}
+		delete(be.Data, "messageId")
+		delete(be.Data, "publishTime")
+	case firebaseAuthCEService:
+		be.Metadata.Resource = name
+
+		// Some keys in the metadata are inconsistent between CloudEvents
+		// and Background Events.
+		if metadata, ok := be.Data["metadata"]; ok {
+			if md, ok := metadata.(map[string]interface{}); ok {
+				if createTime, ok := md["createTime"]; ok {
+					md["createdAt"] = createTime
+					delete(md, "createTime")
+				}
+				if lastSignInTime, ok := md["lastSignInTime"]; ok {
+					md["lastSignedInAt"] = lastSignInTime
+					delete(md, "lastSignInTime")
+				}
+			}
+		}
+	case firebaseDBCEService:
+		be.Resource = regexp.MustCompile(`/locations/[^/]+`).ReplaceAllString(resource, "")
+	case storageCEService:
+		splitRes := splitResource{
+			Name:    resource,
+			Service: service,
+		}
+
+		if dataKind, ok := be.Data["kind"]; ok {
+			splitRes.Type = dataKind
+		}
+
+		be.Resource = splitRes
+	}
+
+	encoded, err := json.Marshal(be)
+	if err != nil {
+		return fmt.Errorf("unable to marshal Background event %v: %v", be, err)
+	}
+
+	r.Body = ioutil.NopCloser(bytes.NewReader(encoded))
+	r.Header.Set(contentTypeHeader, jsonContentType)
 	r.Header.Set(contentLengthHeader, fmt.Sprint(len(encoded)))
 	return nil
 }
