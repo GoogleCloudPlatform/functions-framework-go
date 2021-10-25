@@ -26,7 +26,7 @@ information on using pull requests.
 
 All code changes must be tested before they are merged.
 
-Run all tests with:
+Run all unit tests with:
 
 ```commandline
 go test -v ./...
