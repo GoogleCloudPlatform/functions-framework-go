@@ -171,6 +171,9 @@ func TestEventFunction(t *testing.T) {
 		defer srv.Close()
 
 		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.data))
+		if err != nil {
+			t.Fatalf("http.NewRequest: %v", err)
+		}
 		req.Header.Set("Content-Type", "application/json")
 		for k, v := range tc.ceHeaders {
 			req.Header.Set(k, v)
@@ -271,6 +274,9 @@ func TestCloudEventFunction(t *testing.T) {
 		defer srv.Close()
 
 		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.data))
+		if err != nil {
+			t.Fatalf("http.NewRequest: %v", err)
+		}
 		for k, v := range tc.ceHeaders {
 			req.Header.Add(k, v)
 		}
