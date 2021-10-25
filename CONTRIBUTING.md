@@ -22,6 +22,22 @@ use GitHub pull requests for this purpose. Consult
 [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
 information on using pull requests.
 
+## Testing
+
+All code changes must be tested before they are merged.
+
+Run all unit tests with:
+
+```commandline
+go test -v ./...
+```
+
+Run an individual test by passing the name of the test to `go test`. Example:
+
+```commandline
+go test -v -run TestSplitResource/firebaseauth.googleapis.com ./...
+```
+
 ## Community Guidelines
 
 This project follows
