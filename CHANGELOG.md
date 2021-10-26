@@ -1,5 +1,12 @@
 # Changelog
 
+### [1.3.1](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.3.0...v1.3.1) (2021-10-26)
+
+
+### Bug Fixes
+
+* use standard RFC3339 time formatting ([#89](https://www.github.com/GoogleCloudPlatform/functions-framework-go/issues/89)) ([8218243](https://www.github.com/GoogleCloudPlatform/functions-framework-go/commit/82182437506b131034137b7d6cbb24e522bd213e))
+
 ## [1.3.0](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.2.1...v1.3.0) (2021-10-19)
 
 
