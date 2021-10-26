@@ -27,6 +27,7 @@ information on using pull requests.
 All code changes must be tested before they are merged.
 
 ### Unit Tests
+
 Run all unit tests with:
 
 ```commandline
@@ -40,8 +41,10 @@ go test -v -run TestSplitResource/firebaseauth.googleapis.com ./...
 ```
 
 ### Conformance Tests
+
 Run the [Functions Framework conformance tests](https://github.com/GoogleCloudPlatform/functions-framework-conformance) with:
-```
+
+```commandline
 ./run_conformance_tests.sh
 ```
 

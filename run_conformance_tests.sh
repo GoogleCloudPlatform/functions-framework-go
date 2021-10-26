@@ -14,11 +14,11 @@
 # latest release.
 
 CLIENT_VERSION=$1
-if [ $CLIENT_VERSION ]
-then
+if [ $CLIENT_VERSION ]; then
     CLIENT_VERSION="@$CLIENT_VERSION"
 else
-    echo "Defaulting to latest client; use './run_conformance_tests vX.X.X' to specify a specific release version"
+    echo "Defaulting to latest client."
+    echo "Use './run_conformance_tests vX.X.X' to specify a specific release version."
     CLIENT_VERSION="@latest"
 fi
 
@@ -31,6 +31,7 @@ function print_header() {
 set -e
 
 print_header "INSTALLING CLIENT$CLIENT_VERSION"
+echo "Note: only works with Go 1.16+ by default, see run_conformance_tests.sh for more information."
 # Go install @version only works on go 1.16+, if using a lower Go version
 # replace command with:
 # go get github.com/GoogleCloudPlatform/functions-framework-conformance/client$CLIENT_VERSION && go install github.com/GoogleCloudPlatform/functions-framework-conformance/client
