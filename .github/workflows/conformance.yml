@@ -26,21 +26,21 @@ jobs:
       run: 'go build ./...'
 
     - name: Pre-install conformance test client
-      run: 'go get github.com/GoogleCloudPlatform/functions-framework-conformance/client@v1.1.1 && go install github.com/GoogleCloudPlatform/functions-framework-conformance/client'
+      run: 'go get github.com/GoogleCloudPlatform/functions-framework-conformance/client@v1.2.1 && go install github.com/GoogleCloudPlatform/functions-framework-conformance/client'
 
     - name: Run HTTP conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.1.1
+      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.2.1
       with:
-        version: 'v1.0.0'
+        version: 'v1.2.1'
         functionType: 'http'
         useBuildpacks: false
         cmd: "'go run testdata/conformance/cmd/http/main.go'"
         startDelay: 5
 
     - name: Run event conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.1.1
+      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.2.1
       with:
-        version: 'v1.0.0'
+        version: 'v1.2.1'
         functionType: 'legacyevent'
         validateMapping: true
         useBuildpacks: false
@@ -48,9 +48,9 @@ jobs:
         startDelay: 5
 
     - name: Run CloudEvent conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.1.1
+      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.2.1
       with:
-        version: 'v1.0.0'
+        version: 'v1.2.1'
         functionType: 'cloudevent'
         validateMapping: true
         useBuildpacks: false

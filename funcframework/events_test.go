@@ -353,7 +353,7 @@ func TestConvertBackgroundToCloudEventRequest(t *testing.T) {
 				"notSupported": {
 				},
 				"resource": "projects/my-project-id",
-				"timestamp": "2020-09-29T11:32:00.000Z"
+				"timestamp": "2020-09-29T11:32:00.123Z"
 			  }`,
 			wantCE: `{
 				"specversion": "1.0",
@@ -361,7 +361,7 @@ func TestConvertBackgroundToCloudEventRequest(t *testing.T) {
 				"source": "//firebaseauth.googleapis.com/projects/my-project-id",
 				"subject": "users/UUpby3s4spZre6kHsgVSPetzQ8l2",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json",
 				"data": {
 				  "email": "test@nowhere.com",
@@ -398,7 +398,7 @@ func TestConvertBackgroundToCloudEventRequest(t *testing.T) {
 				  }
 				},
 				"resource": "projects/_/instances/my-project-id/refs/gcf-test/xyz",
-				"timestamp": "2020-09-29T11:32:00.000Z",
+				"timestamp": "2020-09-29T11:32:00.123Z",
 				"eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc"
 			  }`,
 			wantCE: `{
@@ -407,7 +407,7 @@ func TestConvertBackgroundToCloudEventRequest(t *testing.T) {
 				"source": "//firebasedatabase.googleapis.com/projects/_/locations/us-central1/instances/my-project-id",
 				"subject": "refs/gcf-test/xyz",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json",
 				"data": {
 				  "data": null,
@@ -437,7 +437,7 @@ func TestConvertBackgroundToCloudEventRequest(t *testing.T) {
 				  }
 				},
 				"resource": "projects/_/instances/my-project-id/refs/gcf-test/xyz",
-				"timestamp": "2020-09-29T11:32:00.000Z",
+				"timestamp": "2020-09-29T11:32:00.123Z",
 				"eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc"
 			  }`,
 			wantCE: `{
@@ -446,7 +446,7 @@ func TestConvertBackgroundToCloudEventRequest(t *testing.T) {
 				"source": "//firebasedatabase.googleapis.com/projects/_/locations/europe-west1/instances/my-project-id",
 				"subject": "refs/gcf-test/xyz",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json",
 				"data": {
 				  "data": {
@@ -515,14 +515,14 @@ func TestConvertCloudEventToBackgroundRequest(t *testing.T) {
 				"type": "google.cloud.pubsub.topic.v1.messagePublished",
 				"source": "//pubsub.googleapis.com/projects/sample-project/topics/gcf-test",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json",
 				"data": {
 				  "subscription": "projects/sample-project/subscriptions/sample-subscription",
 				  "message": {
 					"@type": "type.googleapis.com/google.pubsub.v1.PubsubMessage",
 					"messageId": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-					"publishTime": "2020-09-29T11:32:00.000Z",
+					"publishTime": "2020-09-29T11:32:00.123Z",
 					"attributes": {
 					   "attr1":"attr1-value"
 					},
@@ -533,7 +533,7 @@ func TestConvertCloudEventToBackgroundRequest(t *testing.T) {
 			wantBE: `{
 				"context": {
 				   "eventId":"aaaaaa-1111-bbbb-2222-cccccccccccc",
-				   "timestamp":"2020-09-29T11:32:00.000Z",
+				   "timestamp":"2020-09-29T11:32:00.123Z",
 				   "eventType":"google.pubsub.topic.publish",
 				   "resource":{
 					 "service":"pubsub.googleapis.com",
@@ -558,7 +558,7 @@ func TestConvertCloudEventToBackgroundRequest(t *testing.T) {
 				"source": "//firebaseauth.googleapis.com/projects/my-project-id",
 				"subject": "users/UUpby3s4spZre6kHsgVSPetzQ8l2",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json",
 				"data": {
 				  "email": "test@nowhere.com",
@@ -596,7 +596,7 @@ func TestConvertCloudEventToBackgroundRequest(t *testing.T) {
 				  "eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc",
 				  "eventType": "providers/firebase.auth/eventTypes/user.create",
 				  "resource": "projects/my-project-id",
-				  "timestamp": "2020-09-29T11:32:00.000Z"
+				  "timestamp": "2020-09-29T11:32:00.123Z"
 				}
 			  }`,
 		},
@@ -608,7 +608,7 @@ func TestConvertCloudEventToBackgroundRequest(t *testing.T) {
 				"source": "//firebasedatabase.googleapis.com/projects/_/locations/us-central1/instances/my-project-id",
 				"subject": "refs/gcf-test/xyz",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json",
 				"data": {
 				  "data": null,
@@ -627,7 +627,7 @@ func TestConvertCloudEventToBackgroundRequest(t *testing.T) {
 				},
 				"context": {
 				  "resource": "projects/_/instances/my-project-id/refs/gcf-test/xyz",
-				  "timestamp": "2020-09-29T11:32:00.000Z",
+				  "timestamp": "2020-09-29T11:32:00.123Z",
 				  "eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc",
 				  "eventType": "providers/google.firebase.database/eventTypes/ref.write" 
 				}
@@ -641,7 +641,7 @@ func TestConvertCloudEventToBackgroundRequest(t *testing.T) {
 				"source": "//firebasedatabase.googleapis.com/projects/_/locations/europe-west1/instances/my-project-id",
 				"subject": "refs/gcf-test/xyz",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json",
 				"data": {
 				  "data": {
@@ -663,7 +663,7 @@ func TestConvertCloudEventToBackgroundRequest(t *testing.T) {
 				},
 				"context": {
 				  "resource": "projects/_/instances/my-project-id/refs/gcf-test/xyz",
-				  "timestamp": "2020-09-29T11:32:00.000Z",
+				  "timestamp": "2020-09-29T11:32:00.123Z",
 				  "eventType": "providers/google.firebase.database/eventTypes/ref.write",
 				  "eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc"
 				}
@@ -677,7 +677,7 @@ func TestConvertCloudEventToBackgroundRequest(t *testing.T) {
 				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
 				"subject": "objects/folder/Test.cs",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json",
 				"data": {
 				  "bucket": "some-bucket",
@@ -702,7 +702,7 @@ func TestConvertCloudEventToBackgroundRequest(t *testing.T) {
 			wantBE: `{
 				"context": {
 				   "eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				   "timestamp": "2020-09-29T11:32:00.000Z",
+				   "timestamp": "2020-09-29T11:32:00.123Z",
 				   "eventType": "google.storage.object.finalize",
 				   "resource": {
 					  "service": "storage.googleapis.com",
@@ -749,7 +749,7 @@ func TestConvertCloudEventToBackgroundRequest(t *testing.T) {
 			req.Header.Set("ce-source", ce.Source())
 			req.Header.Set("ce-id", ce.ID())
 			req.Header.Set("ce-subject", ce.Subject())
-			req.Header.Set("ce-time", ce.Time().Format(timeFmt))
+			req.Header.Set("ce-time", ce.Time().Format(time.RFC3339Nano))
 			req.Header.Set("ce-specversion", ce.SpecVersion())
 
 			if err := convertCloudEventToBackgroundRequest(req); err != nil {
@@ -801,7 +801,7 @@ func TestShouldConvertCloudEventToBackgroundRequest(t *testing.T) {
 				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
 				"subject": "objects/folder/Test.cs",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json"
 			  }`,
 			shouldConvert: true,
@@ -826,7 +826,7 @@ func TestShouldConvertCloudEventToBackgroundRequest(t *testing.T) {
 				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
 				"subject": "objects/folder/Test.cs",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json"
 			  }`,
 			shouldConvert: false,
@@ -838,7 +838,7 @@ func TestShouldConvertCloudEventToBackgroundRequest(t *testing.T) {
 				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
 				"subject": "objects/folder/Test.cs",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json"
 			  }`,
 			shouldConvert: false,
@@ -850,7 +850,7 @@ func TestShouldConvertCloudEventToBackgroundRequest(t *testing.T) {
 				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
 				"subject": "objects/folder/Test.cs",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json"
 			  }`,
 			shouldConvert: false,
@@ -861,7 +861,7 @@ func TestShouldConvertCloudEventToBackgroundRequest(t *testing.T) {
 				"specversion": "1.0",
 				"subject": "objects/folder/Test.cs",
 				"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json"
 			  }`,
 			shouldConvert: false,
@@ -873,7 +873,7 @@ func TestShouldConvertCloudEventToBackgroundRequest(t *testing.T) {
 				"type": "google.cloud.storage.object.v1.finalized",
 				"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
 				"subject": "objects/folder/Test.cs",
-				"time": "2020-09-29T11:32:00.000Z",
+				"time": "2020-09-29T11:32:00.123Z",
 				"datacontenttype": "application/json"
 			  }`,
 			shouldConvert: false,

@@ -32,9 +32,6 @@ const (
 	storageCEService      = "storage.googleapis.com"
 
 	pubsubMessageType = "type.googleapis.com/google.pubsub.v1.PubsubMessage"
-
-	// timeFmt is the precision that CloudEvents timestamps require.
-	timeFmt = "2006-01-02T15:04:05.000Z"
 )
 
 var (
@@ -330,10 +327,9 @@ func convertBackgroundToCloudEventRequest(r *http.Request) error {
 		return err
 	}
 
-	time := md.Timestamp.Format(timeFmt)
 	ce := map[string]interface{}{
 		"id":              md.EventID,
-		"time":            time,
+		"time":            md.Timestamp,
 		"specversion":     ceSpecVersion,
 		"datacontenttype": "application/json",
 		"type":            t,
@@ -352,7 +348,7 @@ func convertBackgroundToCloudEventRequest(r *http.Request) error {
 			return fmt.Errorf(`invalid "data" field in event payload, "data": %q`, d)
 		}
 
-		data["publishTime"] = time
+		data["publishTime"] = md.Timestamp
 		data["messageId"] = md.EventID
 
 		// In a Pub/Sub CloudEvent "data" is wrapped by "message".
