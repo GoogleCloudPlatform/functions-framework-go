@@ -341,11 +341,6 @@ func createCloudEventRequest(r *http.Request) (int, error) {
 		ce["subject"] = subject
 	}
 
-	// Set traceparent header.
-	if r.Header.Get("traceparent") != "" {
-		ce["traceparent"] = r.Header.Get("traceparent")
-	}
-
 	encoded, err := json.Marshal(ce)
 	if err != nil {
 		return http.StatusBadRequest, fmt.Errorf("Unable to marshal CloudEvent %v: %v", ce, err)
