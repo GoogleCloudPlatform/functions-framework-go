@@ -172,7 +172,7 @@ func TestEventFunction(t *testing.T) {
 
 		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.data))
 		if err != nil {
-			t.Fatalf("http.NewRequest: %v", err)
+			t.Fatalf("http.NewRequest err: %v", err)
 		}
 		req.Header.Set("Content-Type", "application/json")
 		for k, v := range tc.ceHeaders {
