@@ -216,6 +216,28 @@ These functions are registered with the handler via `funcframework.RegisterCloud
 
 To learn more about CloudEvents, see the [Go SDK for CloudEvents](https://github.com/cloudevents/sdk-go).
 
+### Declarative Functions
+
+The Functions Framework also provides a way to declaratively define functions:
+
+```golang
+package function
+
+import (
+	"net/http"
+
+	funcframework "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+)
+
+func init() {
+	funcframework.HTTPFunction("foo", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello, World!"))
+	})
+}
+```
+
+Upon starting, the framework will register your function with the function name in the URL path.
+
 [ff_go_unit_img]: https://github.com/GoogleCloudPlatform/functions-framework-go/workflows/Go%20Unit%20CI/badge.svg
 [ff_go_unit_link]: https://github.com/GoogleCloudPlatform/functions-framework-go/actions?query=workflow%3A"Go+Unit+CI"
 [ff_go_lint_img]: https://github.com/GoogleCloudPlatform/functions-framework-go/workflows/Go%20Lint%20CI/badge.svg
