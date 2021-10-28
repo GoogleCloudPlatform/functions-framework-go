@@ -2,6 +2,7 @@ package funcframework
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -20,6 +21,9 @@ var (
 
 // Registers a HTTP function with a given name
 func HTTPFunction(name string, fn func(http.ResponseWriter, *http.Request)) error {
+	if _, ok := function_registry[name]; ok {
+		return fmt.Errorf("function name already registered: %s", name)
+	}
 	function_registry[name] = RegisteredFunction{
 		Name:         name,
 		CloudEventFn: nil,
@@ -31,6 +35,10 @@ func HTTPFunction(name string, fn func(http.ResponseWriter, *http.Request)) erro
 
 // Registers a CloudEvent function with a given name
 func CloudEventFunction(name string, fn func(context.Context, cloudevents.Event) error) error {
+	if _, ok := function_registry[name]; ok {
+		return fmt.Errorf("function name already registered: %s", name)
+	}
+
 	function_registry[name] = RegisteredFunction{
 		Name:         name,
 		CloudEventFn: fn,
