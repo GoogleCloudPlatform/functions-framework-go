@@ -230,13 +230,15 @@ import (
 )
 
 func init() {
-	funcframework.HTTPFunction("foo", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello, World!"))
-	})
+	funcframework.HTTPFunction("hello", HelloWorld)
+}
+
+func HelloWorld(w http.ResponseWriter, r *http.Request) {
+  w.Write([]byte("Hello, World!"))
 }
 ```
 
-Upon starting, the framework will register your function with the function name in the URL path.
+Upon starting, the framework will register your function defined by `FUNCTION_TARGET` at "/".
 
 [ff_go_unit_img]: https://github.com/GoogleCloudPlatform/functions-framework-go/workflows/Go%20Unit%20CI/badge.svg
 [ff_go_unit_link]: https://github.com/GoogleCloudPlatform/functions-framework-go/actions?query=workflow%3A"Go+Unit+CI"

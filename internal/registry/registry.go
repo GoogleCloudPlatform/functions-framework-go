@@ -1,4 +1,4 @@
-package funcframework
+package registry
 
 import (
 	"context"
@@ -10,9 +10,9 @@ import (
 
 // A declaratively registered function
 type RegisteredFunction struct {
-	Name         string
-	CloudEventFn func(context.Context, cloudevents.Event) error
-	HTTPFn       func(http.ResponseWriter, *http.Request)
+	Name         string                                         // The name of the function
+	CloudEventFn func(context.Context, cloudevents.Event) error // Optional: The user's CloudEvent function
+	HTTPFn       func(http.ResponseWriter, *http.Request)       // Optional: The user's HTTP function
 }
 
 var (
@@ -29,7 +29,6 @@ func HTTPFunction(name string, fn func(http.ResponseWriter, *http.Request)) erro
 		CloudEventFn: nil,
 		HTTPFn:       fn,
 	}
-	RegisterHTTPFunctionContext(context.Background(), name, fn)
 	return nil
 }
 
@@ -44,7 +43,6 @@ func CloudEventFunction(name string, fn func(context.Context, cloudevents.Event)
 		CloudEventFn: fn,
 		HTTPFn:       nil,
 	}
-	RegisterCloudEventFunctionContext(context.Background(), name, fn)
 	return nil
 }
 

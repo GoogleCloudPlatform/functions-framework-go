@@ -12,17 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package function contains test functions to validate the framework.
-package function
+// Binary that serves the HTTP conformance test function.
+package main
 
 import (
-	"net/http"
+	"log"
+	"os"
 
-	funcframework "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+	"github.com/GoogleCloudPlatform/functions-framework-go/testdata/conformance/function"
 )
 
 func init() {
-	funcframework.HTTPFunction("foo", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello, World!"))
-	})
+	log.Print("Listening to function \"cloudevent\" at http://localhost:8080/")
+	funcframework.CloudEvent("cloudevent", function.CloudEvent)
+}
+
+func main() {
+	port := "8080"
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		port = envPort
+	}
+	if err := funcframework.Start(port); err != nil {
+		log.Fatalf("Failed to start functions framework: %v", err)
+	}
 }

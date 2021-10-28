@@ -27,6 +27,7 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/functions-framework-go/internal/registry"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
@@ -94,6 +95,29 @@ func RegisterEventFunctionContext(ctx context.Context, path string, fn interface
 // RegisterCloudEventFunctionContext registers fn as an cloudevent function.
 func RegisterCloudEventFunctionContext(ctx context.Context, path string, fn func(context.Context, cloudevents.Event) error) error {
 	return registerCloudEventFunction(ctx, path, fn, handler)
+}
+
+// Declaratively registers a HTTP function.
+func HTTP(name string, fn func(http.ResponseWriter, *http.Request)) {
+	defer recoverPanic("Registration panic")
+
+	// Regiseter the function.
+	registry.HTTPFunction(name, fn)
+	if err := registerHTTPFunction("/", fn, handler); err != nil {
+		panic(fmt.Sprintf("unexpected error in RegisterHTTPFunction: %v", err))
+	}
+}
+
+// Declaratively registers a CloudEvent function.
+func CloudEvent(name string, fn func(context.Context, cloudevents.Event) error) {
+	defer recoverPanic("Registration panic")
+
+	// Regiseter the function.
+	registry.CloudEventFunction(name, fn)
+	ctx := context.Background()
+	if err := registerCloudEventFunction(ctx, "/", fn, handler); err != nil {
+		panic(fmt.Sprintf("unexpected error in RegisterCloudEventFunction: %v", err))
+	}
 }
 
 // Start serves an HTTP server with registered function(s).
