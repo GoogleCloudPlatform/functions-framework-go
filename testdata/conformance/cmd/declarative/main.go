@@ -20,14 +20,12 @@ import (
 	"os"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-	"github.com/GoogleCloudPlatform/functions-framework-go/testdata/conformance/function"
+	_ "github.com/GoogleCloudPlatform/functions-framework-go/testdata/conformance/function"
 )
 
-func init() {
-	log.Print("Listening to function \"cloudevent\" at http://localhost:8080/")
-	funcframework.CloudEvent("cloudevent", function.CloudEvent)
-}
-
+// Main function used for testing only:
+// FUNCTION_TARGET=declarativeHTTP go run testdata/conformance/cmd/declarative/main.go
+// FUNCTION_TARGET=declarativeCE go run testdata/conformance/cmd/declarative/main.go
 func main() {
 	port := "8080"
 	if envPort := os.Getenv("PORT"); envPort != "" {

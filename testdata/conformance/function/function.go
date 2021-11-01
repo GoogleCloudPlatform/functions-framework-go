@@ -24,7 +24,7 @@ import (
 	"net/http"
 
 	"cloud.google.com/go/functions/metadata"
-	_ "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
@@ -80,4 +80,13 @@ func CloudEvent(ctx context.Context, ce cloudevents.Event) error {
 	}
 
 	return nil
+}
+
+// Register declarative functions
+func init() {
+	fmt.Println("Registering function: declarativeHTTP")
+	funcframework.HTTP("declarativeHTTP", HTTP)
+
+	fmt.Println("Registering function: declarativeCE")
+	funcframework.CloudEvent("declarativeCE", CloudEvent)
 }

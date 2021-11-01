@@ -125,7 +125,7 @@ func Start(port string) error {
 
 	// Check if we have a function resource set, and if so, log progress.
 	if os.Getenv("K_SERVICE") == "" {
-		fmt.Print("Serving function...\n")
+		fmt.Printf("Serving function: %s\n", target)
 	}
 
 	// Check if there's a registered function
