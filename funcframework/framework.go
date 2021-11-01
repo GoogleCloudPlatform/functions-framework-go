@@ -137,11 +137,11 @@ func Start(port string) error {
 		ctx := context.Background()
 		if fn.HTTPFn != nil {
 			if err := registerHTTPFunction("/", fn.HTTPFn, handler); err != nil {
-				panic(fmt.Sprintf("unexpected error in RegisterHTTPFunction: %v", err))
+				panic(fmt.Sprintf("unexpected error in registerHTTPFunction: %v", err))
 			}
 		} else if fn.CloudEventFn != nil {
 			if err := registerCloudEventFunction(ctx, "/", fn.CloudEventFn, handler); err != nil {
-				panic(fmt.Sprintf("unexpected error in RegisterCloudEventFunction: %v", err))
+				panic(fmt.Sprintf("unexpected error in registerCloudEventFunction: %v", err))
 			}
 		}
 	}

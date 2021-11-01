@@ -238,7 +238,7 @@ func HelloWorld(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-Upon starting, the framework will register your function defined by `FUNCTION_TARGET` at "/".
+Upon starting, the framework will listen to HTTP requests at `/` and invoke your registered function (specified `FUNCTION_TARGET=hello`).
 
 [ff_go_unit_img]: https://github.com/GoogleCloudPlatform/functions-framework-go/workflows/Go%20Unit%20CI/badge.svg
 [ff_go_unit_link]: https://github.com/GoogleCloudPlatform/functions-framework-go/actions?query=workflow%3A"Go+Unit+CI"

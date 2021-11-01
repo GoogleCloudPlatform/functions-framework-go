@@ -51,31 +51,33 @@ func TestRegisterCE(t *testing.T) {
 }
 
 func TestRegisterMultipleFunctions(t *testing.T) {
-	RegisterHTTP("multifn1", func(w http.ResponseWriter, r *http.Request) {
+	if ok := RegisterHTTP("multifn1", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
-	})
-	RegisterHTTP("multifn2", func(w http.ResponseWriter, r *http.Request) {
+	}); ok != nil {
+		t.Error("Expected \"multifn1\" function to be registered")
+	}
+	if ok := RegisterHTTP("multifn2", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World 2!")
-	})
-	RegisterCloudEvent("multifn3", func(context.Context, cloudevents.Event) error {
+	}); ok != nil {
+		t.Error("Expected \"multifn2\" function to be registered")
+	}
+	if ok := RegisterCloudEvent("multifn3", func(context.Context, cloudevents.Event) error {
 		return nil
-	})
+	}); ok != nil {
+		t.Error("Expected \"multifn3\" function to be registered")
+	}
 }
 
 func TestRegisterMultipleFunctionsError(t *testing.T) {
-	// Expect no error
-	err := RegisterHTTP("samename", func(w http.ResponseWriter, r *http.Request) {
+	if err := RegisterHTTP("samename", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
-	})
-	if err != nil {
+	}); err != nil {
 		t.Error("Expected no error registering function")
 	}
 
-	// Expect err error
-	err = RegisterHTTP("samename", func(w http.ResponseWriter, r *http.Request) {
+	if err := RegisterHTTP("samename", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World 2!")
-	})
-	if err == nil {
+	}); err == nil {
 		t.Error("Expected error registering function with same name")
 	}
 }

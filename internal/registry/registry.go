@@ -37,7 +37,6 @@ func RegisterCloudEvent(name string, fn func(context.Context, cloudevents.Event)
 	if _, ok := function_registry[name]; ok {
 		return fmt.Errorf("function name already registered: %s", name)
 	}
-
 	function_registry[name] = RegisteredFunction{
 		Name:         name,
 		CloudEventFn: fn,
