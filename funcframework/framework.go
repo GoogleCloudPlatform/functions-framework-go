@@ -101,30 +101,49 @@ func RegisterCloudEventFunctionContext(ctx context.Context, path string, fn func
 func HTTP(name string, fn func(http.ResponseWriter, *http.Request)) {
 	defer recoverPanic("Registration panic")
 
-	// Regiseter the function.
+	// Register the function.
 	registry.RegisterHTTP(name, fn)
-	if err := registerHTTPFunction("/", fn, handler); err != nil {
-		panic(fmt.Sprintf("unexpected error in RegisterHTTPFunction: %v", err))
-	}
 }
 
 // Declaratively registers a CloudEvent function.
 func CloudEvent(name string, fn func(context.Context, cloudevents.Event) error) {
 	defer recoverPanic("Registration panic")
 
-	// Regiseter the function.
+	// Register the function.
 	registry.RegisterCloudEvent(name, fn)
-	ctx := context.Background()
-	if err := registerCloudEventFunction(ctx, "/", fn, handler); err != nil {
-		panic(fmt.Sprintf("unexpected error in RegisterCloudEventFunction: %v", err))
-	}
 }
 
 // Start serves an HTTP server with registered function(s).
 func Start(port string) error {
+	// If FUNCTION_TARGET, try to start with that registered function
+	// If not set, assume non-declarative functions.
+	target := os.Getenv("FUNCTION_TARGET")
+	if target == "" {
+		// Default function target
+		target = "function"
+	}
+
 	// Check if we have a function resource set, and if so, log progress.
 	if os.Getenv("K_SERVICE") == "" {
-		fmt.Println("Serving function...")
+		fmt.Print("Serving function...\n")
+	}
+
+	// Check if there's a registered function
+	fn, hasRegisteredFn := registry.GetRegisteredFunction(target)
+	if hasRegisteredFn {
+		fmt.Printf("Declarative function: \"%s\"\n", target)
+
+		// Use registered fn
+		ctx := context.Background()
+		if fn.HTTPFn != nil {
+			if err := registerHTTPFunction("/", fn.HTTPFn, handler); err != nil {
+				panic(fmt.Sprintf("unexpected error in RegisterHTTPFunction: %v", err))
+			}
+		} else if fn.CloudEventFn != nil {
+			if err := registerCloudEventFunction(ctx, "/", fn.CloudEventFn, handler); err != nil {
+				panic(fmt.Sprintf("unexpected error in RegisterCloudEventFunction: %v", err))
+			}
+		}
 	}
 
 	return http.ListenAndServe(":"+port, handler)
