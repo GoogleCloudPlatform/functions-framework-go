@@ -23,7 +23,7 @@ import (
 )
 
 func TestRegisterHTTP(t *testing.T) {
-	HTTPFunction("httpfn", func(w http.ResponseWriter, r *http.Request) {
+	RegisterHTTP("httpfn", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
 	})
 
@@ -37,7 +37,7 @@ func TestRegisterHTTP(t *testing.T) {
 }
 
 func TestRegisterCE(t *testing.T) {
-	CloudEventFunction("cefn", func(context.Context, cloudevents.Event) error {
+	RegisterCloudEvent("cefn", func(context.Context, cloudevents.Event) error {
 		return nil
 	})
 
@@ -51,20 +51,20 @@ func TestRegisterCE(t *testing.T) {
 }
 
 func TestRegisterMultipleFunctions(t *testing.T) {
-	HTTPFunction("multifn1", func(w http.ResponseWriter, r *http.Request) {
+	RegisterHTTP("multifn1", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
 	})
-	HTTPFunction("multifn2", func(w http.ResponseWriter, r *http.Request) {
+	RegisterHTTP("multifn2", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World 2!")
 	})
-	CloudEventFunction("multifn3", func(context.Context, cloudevents.Event) error {
+	RegisterCloudEvent("multifn3", func(context.Context, cloudevents.Event) error {
 		return nil
 	})
 }
 
 func TestRegisterMultipleFunctionsError(t *testing.T) {
 	// Expect no error
-	err := HTTPFunction("samename", func(w http.ResponseWriter, r *http.Request) {
+	err := RegisterHTTP("samename", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
 	})
 	if err != nil {
@@ -72,7 +72,7 @@ func TestRegisterMultipleFunctionsError(t *testing.T) {
 	}
 
 	// Expect err error
-	err = HTTPFunction("samename", func(w http.ResponseWriter, r *http.Request) {
+	err = RegisterHTTP("samename", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World 2!")
 	})
 	if err == nil {

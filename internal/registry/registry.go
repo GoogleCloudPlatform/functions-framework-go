@@ -20,7 +20,7 @@ var (
 )
 
 // Registers a HTTP function with a given name
-func HTTPFunction(name string, fn func(http.ResponseWriter, *http.Request)) error {
+func RegisterHTTP(name string, fn func(http.ResponseWriter, *http.Request)) error {
 	if _, ok := function_registry[name]; ok {
 		return fmt.Errorf("function name already registered: %s", name)
 	}
@@ -33,7 +33,7 @@ func HTTPFunction(name string, fn func(http.ResponseWriter, *http.Request)) erro
 }
 
 // Registers a CloudEvent function with a given name
-func CloudEventFunction(name string, fn func(context.Context, cloudevents.Event) error) error {
+func RegisterCloudEvent(name string, fn func(context.Context, cloudevents.Event) error) error {
 	if _, ok := function_registry[name]; ok {
 		return fmt.Errorf("function name already registered: %s", name)
 	}

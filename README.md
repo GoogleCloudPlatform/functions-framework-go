@@ -230,7 +230,7 @@ import (
 )
 
 func init() {
-	funcframework.HTTPFunction("hello", HelloWorld)
+	funcframework.RegisterHTTP("hello", HelloWorld)
 }
 
 func HelloWorld(w http.ResponseWriter, r *http.Request) {

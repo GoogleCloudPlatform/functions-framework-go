@@ -102,7 +102,7 @@ func HTTP(name string, fn func(http.ResponseWriter, *http.Request)) {
 	defer recoverPanic("Registration panic")
 
 	// Regiseter the function.
-	registry.HTTPFunction(name, fn)
+	registry.RegisterHTTP(name, fn)
 	if err := registerHTTPFunction("/", fn, handler); err != nil {
 		panic(fmt.Sprintf("unexpected error in RegisterHTTPFunction: %v", err))
 	}
@@ -113,7 +113,7 @@ func CloudEvent(name string, fn func(context.Context, cloudevents.Event) error) 
 	defer recoverPanic("Registration panic")
 
 	// Regiseter the function.
-	registry.CloudEventFunction(name, fn)
+	registry.RegisterCloudEvent(name, fn)
 	ctx := context.Background()
 	if err := registerCloudEventFunction(ctx, "/", fn, handler); err != nil {
 		panic(fmt.Sprintf("unexpected error in RegisterCloudEventFunction: %v", err))

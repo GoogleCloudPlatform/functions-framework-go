@@ -69,7 +69,6 @@ func Event(ctx context.Context, data interface{}) error {
 }
 
 // CloudEvent is a cloud event function that dumps the event to JSON and calls the validator script
-// on the result.
 func CloudEvent(ctx context.Context, ce cloudevents.Event) error {
 	e, err := json.Marshal(ce)
 	if err != nil {
