@@ -128,12 +128,9 @@ func Start(port string) error {
 		fmt.Printf("Serving function: %s\n", target)
 	}
 
-	// Check if there's a registered function
+	// Check if there's a registered function, and use if possible
 	fn, hasRegisteredFn := registry.GetRegisteredFunction(target)
 	if hasRegisteredFn {
-		fmt.Printf("Declarative function: \"%s\"\n", target)
-
-		// Use registered fn
 		ctx := context.Background()
 		if fn.HTTPFn != nil {
 			if err := registerHTTPFunction("/", fn.HTTPFn, handler); err != nil {
