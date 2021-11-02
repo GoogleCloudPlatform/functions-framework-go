@@ -29,7 +29,7 @@ func TestRegisterHTTP(t *testing.T) {
 
 	fn, ok := GetRegisteredFunction("httpfn")
 	if !ok {
-		t.Error("Expected function to be registered")
+		t.Fatalf("Expected function to be registered")
 	}
 	if fn.Name != "httpfn" {
 		t.Errorf("Expected function name to be 'httpfn', got %s", fn.Name)
@@ -43,7 +43,7 @@ func TestRegisterCE(t *testing.T) {
 
 	fn, ok := GetRegisteredFunction("cefn")
 	if !ok {
-		t.Error("Expected function to be registered")
+		t.Fatalf("Expected function to be registered")
 	}
 	if fn.Name != "cefn" {
 		t.Errorf("Expected function name to be 'cefn', got %s", fn.Name)

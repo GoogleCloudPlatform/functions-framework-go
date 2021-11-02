@@ -84,9 +84,6 @@ func CloudEvent(ctx context.Context, ce cloudevents.Event) error {
 
 // Register declarative functions
 func init() {
-	fmt.Println("Registering function: declarativeHTTP")
 	funcframework.HTTP("declarativeHTTP", HTTP)
-
-	fmt.Println("Registering function: declarativeCE")
-	funcframework.CloudEvent("declarativeCE", CloudEvent)
+	funcframework.CloudEvent("declarativeCloudEvent", CloudEvent)
 }

@@ -27,7 +27,7 @@ import (
 func main() {
 	ctx := context.Background()
 	if err := funcframework.RegisterCloudEventFunctionContext(ctx, "/", function.CloudEvent); err != nil {
-		log.Fatalf("Failed to register function:: %v", err)
+		log.Fatalf("Failed to register function: %v", err)
 	}
 
 	port := "8080"

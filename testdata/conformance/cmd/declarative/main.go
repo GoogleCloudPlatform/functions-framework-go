@@ -25,7 +25,7 @@ import (
 
 // Main function used for testing only:
 // FUNCTION_TARGET=declarativeHTTP go run testdata/conformance/cmd/declarative/main.go
-// FUNCTION_TARGET=declarativeCE go run testdata/conformance/cmd/declarative/main.go
+// FUNCTION_TARGET=declarativeCloudEvent go run testdata/conformance/cmd/declarative/main.go
 func main() {
 	port := "8080"
 	if envPort := os.Getenv("PORT"); envPort != "" {
