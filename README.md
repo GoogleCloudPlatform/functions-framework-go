@@ -218,7 +218,7 @@ To learn more about CloudEvents, see the [Go SDK for CloudEvents](https://github
 
 ### Declarative Functions
 
-The Functions Framework also provides a way to declaratively define functions:
+The Functions Framework also provides a way to declaratively define `HTTP` and `CloudEvent` functions:
 
 ```golang
 package function
@@ -230,11 +230,17 @@ import (
 )
 
 func init() {
-	funcframework.RegisterHTTP("hello", HelloWorld)
+	funcframework.HTTP("hello", HelloWorld)
+	funcframework.HTTP("ce", CloudEvent)
 }
 
 func HelloWorld(w http.ResponseWriter, r *http.Request) {
-  w.Write([]byte("Hello, World!"))
+	w.Write([]byte("Hello, World!"))
+}
+
+func CloudEvent(ctx context.Context, e cloudevents.Event) error {
+	// Do something with event.Context and event.Data (via event.DataAs(foo)).
+	return nil
 }
 ```
 
