@@ -60,3 +60,13 @@ jobs:
         useBuildpacks: false
         cmd: "'go run testdata/conformance/cmd/declarative/main.go'"
         startDelay: 5
+    - name: Run CloudEvent conformance tests using declarative API
+      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.2.1
+      env:
+        FUNCTION_TARGET: 'declarativeCE'
+      with:
+        version: 'v1.2.1'
+        functionType: 'cloudevent'
+        useBuildpacks: false
+        cmd: "'go run testdata/conformance/cmd/declarative/main.go'"
+        startDelay: 5
