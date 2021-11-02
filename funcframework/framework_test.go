@@ -22,8 +22,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/functions-framework-go/internal/registry"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/google/go-cmp/cmp"
 )
@@ -439,5 +441,29 @@ func TestCloudEventFunction(t *testing.T) {
 		if resp.Header.Get(functionStatusHeader) != tc.header {
 			t.Errorf("TestCloudEventFunction(%s): response header = %q, want %q", tc.name, resp.Header.Get(functionStatusHeader), tc.header)
 		}
+	}
+}
+
+func TestDeclarativeFunction(t *testing.T) {
+	funcName := "httpfunc"
+	os.Setenv("FUNCTION_TARGET", funcName)
+
+	h := http.NewServeMux()
+	overrideHandlerWithRegisteredFunctions(h)
+
+	// register functions
+	HTTP(funcName, func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "Hello World!")
+	})
+
+	if _, ok := registry.GetRegisteredFunction(funcName); !ok {
+		t.Fatalf("could not get registered function: %s", funcName)
+	}
+
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	if _, err := http.Get(srv.URL); err != nil {
+		t.Fatalf("error: %s", err)
 	}
 }
