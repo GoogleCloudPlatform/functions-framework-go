@@ -244,7 +244,8 @@ func CloudEvent(ctx context.Context, e cloudevents.Event) error {
 }
 ```
 
-Upon starting, the framework will listen to HTTP requests at `/` and invoke your registered function (specified by `FUNCTION_TARGET=hello`).
+Upon starting, the framework will listen to HTTP requests at `/` and invoke your registered function
+specified by the `FUNCTION_TARGET` environment variable (i.e. `FUNCTION_TARGET=hello`).
 
 [ff_go_unit_img]: https://github.com/GoogleCloudPlatform/functions-framework-go/workflows/Go%20Unit%20CI/badge.svg
 [ff_go_unit_link]: https://github.com/GoogleCloudPlatform/functions-framework-go/actions?query=workflow%3A"Go+Unit+CI"
