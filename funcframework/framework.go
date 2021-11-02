@@ -99,9 +99,6 @@ func RegisterCloudEventFunctionContext(ctx context.Context, path string, fn func
 
 // Declaratively registers a HTTP function.
 func HTTP(name string, fn func(http.ResponseWriter, *http.Request)) {
-	defer recoverPanic("Registration panic")
-
-	// Register the function.
 	if err := registry.RegisterHTTP(name, fn); err != nil {
 		log.Fatalf("failure to register function: %s", err)
 	}
@@ -109,9 +106,6 @@ func HTTP(name string, fn func(http.ResponseWriter, *http.Request)) {
 
 // Declaratively registers a CloudEvent function.
 func CloudEvent(name string, fn func(context.Context, cloudevents.Event) error) {
-	defer recoverPanic("Registration panic")
-
-	// Register the function.
 	if err := registry.RegisterCloudEvent(name, fn); err != nil {
 		log.Fatalf("failure to register function: %s", err)
 	}

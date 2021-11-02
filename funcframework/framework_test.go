@@ -464,6 +464,6 @@ func TestDeclarativeFunction(t *testing.T) {
 	defer srv.Close()
 
 	if _, err := http.Get(srv.URL); err != nil {
-		t.Fatalf("error: %s", err)
+		t.Fatalf("could not make HTTP GET request to function: %s", err)
 	}
 }
