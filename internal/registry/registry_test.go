@@ -51,19 +51,19 @@ func TestRegisterCE(t *testing.T) {
 }
 
 func TestRegisterMultipleFunctions(t *testing.T) {
-	if ok := RegisterHTTP("multifn1", func(w http.ResponseWriter, r *http.Request) {
+	if err := RegisterHTTP("multifn1", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
-	}); ok != nil {
+	}); err != nil {
 		t.Error("Expected \"multifn1\" function to be registered")
 	}
-	if ok := RegisterHTTP("multifn2", func(w http.ResponseWriter, r *http.Request) {
+	if err := RegisterHTTP("multifn2", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World 2!")
-	}); ok != nil {
+	}); err != nil {
 		t.Error("Expected \"multifn2\" function to be registered")
 	}
-	if ok := RegisterCloudEvent("multifn3", func(context.Context, cloudevents.Event) error {
+	if err := RegisterCloudEvent("multifn3", func(context.Context, cloudevents.Event) error {
 		return nil
-	}); ok != nil {
+	}); err != nil {
 		t.Error("Expected \"multifn3\" function to be registered")
 	}
 }
