@@ -16,18 +16,14 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@v2
-
     - name: Set up Go ${{ matrix.go-version }}
       uses: actions/setup-go@v2
       with:
         go-version: '${{ matrix.go-version }}'
-
     - name: Pre-fetch go dependencies and build
       run: 'go build ./...'
-
     - name: Pre-install conformance test client
       run: 'go get github.com/GoogleCloudPlatform/functions-framework-conformance/client@v1.2.1 && go install github.com/GoogleCloudPlatform/functions-framework-conformance/client'
-
     - name: Run HTTP conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.2.1
       with:
@@ -36,7 +32,6 @@ jobs:
         useBuildpacks: false
         cmd: "'go run testdata/conformance/cmd/http/main.go'"
         startDelay: 5
-
     - name: Run event conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.2.1
       with:
@@ -46,7 +41,6 @@ jobs:
         useBuildpacks: false
         cmd: "'go run testdata/conformance/cmd/legacyevent/main.go'"
         startDelay: 5
-
     - name: Run CloudEvent conformance tests
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.2.1
       with:
@@ -55,4 +49,24 @@ jobs:
         validateMapping: true
         useBuildpacks: false
         cmd: "'go run testdata/conformance/cmd/cloudevent/main.go'"
+        startDelay: 5
+    - name: Run HTTP conformance tests using declarative API
+      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.2.1
+      env:
+        FUNCTION_TARGET: 'declarativeHTTP'
+      with:
+        version: 'v1.2.1'
+        functionType: 'http'
+        useBuildpacks: false
+        cmd: "'go run testdata/conformance/cmd/declarative/main.go'"
+        startDelay: 5
+    - name: Run CloudEvent conformance tests using declarative API
+      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.2.1
+      env:
+        FUNCTION_TARGET: 'declarativeCloudEvent'
+      with:
+        version: 'v1.2.1'
+        functionType: 'cloudevent'
+        useBuildpacks: false
+        cmd: "'go run testdata/conformance/cmd/declarative/main.go'"
         startDelay: 5

@@ -21,12 +21,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"reflect"
 	"runtime/debug"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/functions-framework-go/internal/registry"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
@@ -58,7 +60,6 @@ func RegisterHTTPFunction(path string, fn interface{}) {
 	defer recoverPanic("Registration panic")
 
 	fnHTTP, ok := fn.(func(http.ResponseWriter, *http.Request))
-
 	if !ok {
 		panic("expected function to have signature func(http.ResponseWriter, *http.Request)")
 	}
@@ -96,11 +97,43 @@ func RegisterCloudEventFunctionContext(ctx context.Context, path string, fn func
 	return registerCloudEventFunction(ctx, path, fn, handler)
 }
 
+// Declaratively registers a HTTP function.
+func HTTP(name string, fn func(http.ResponseWriter, *http.Request)) {
+	if err := registry.RegisterHTTP(name, fn); err != nil {
+		log.Fatalf("failure to register function: %s", err)
+	}
+}
+
+// Declaratively registers a CloudEvent function.
+func CloudEvent(name string, fn func(context.Context, cloudevents.Event) error) {
+	if err := registry.RegisterCloudEvent(name, fn); err != nil {
+		log.Fatalf("failure to register function: %s", err)
+	}
+}
+
 // Start serves an HTTP server with registered function(s).
 func Start(port string) error {
+	// If FUNCTION_TARGET, try to start with that registered function
+	// If not set, assume non-declarative functions.
+	target := os.Getenv("FUNCTION_TARGET")
+
 	// Check if we have a function resource set, and if so, log progress.
 	if os.Getenv("K_SERVICE") == "" {
-		fmt.Println("Serving function...")
+		fmt.Printf("Serving function: %s\n", target)
+	}
+
+	// Check if there's a registered function, and use if possible
+	if fn, ok := registry.GetRegisteredFunction(target); ok {
+		ctx := context.Background()
+		if fn.HTTPFn != nil {
+			if err := registerHTTPFunction("/", fn.HTTPFn, handler); err != nil {
+				return fmt.Errorf("unexpected error in registerHTTPFunction: %v", err)
+			}
+		} else if fn.CloudEventFn != nil {
+			if err := registerCloudEventFunction(ctx, "/", fn.CloudEventFn, handler); err != nil {
+				return fmt.Errorf("unexpected error in registerCloudEventFunction: %v", err)
+			}
+		}
 	}
 
 	return http.ListenAndServe(":"+port, handler)
@@ -231,4 +264,9 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 	w.Header().Set(functionStatusHeader, status)
 	w.WriteHeader(statusCode)
 	fmt.Fprint(w, msg)
+}
+
+func overrideHandlerWithRegisteredFunctions(h *http.ServeMux) {
+	// override http handler for tests
+	handler = h
 }

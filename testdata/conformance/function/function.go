@@ -24,7 +24,7 @@ import (
 	"net/http"
 
 	"cloud.google.com/go/functions/metadata"
-	_ "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
@@ -69,7 +69,6 @@ func Event(ctx context.Context, data interface{}) error {
 }
 
 // CloudEvent is a cloud event function that dumps the event to JSON and calls the validator script
-// on the result.
 func CloudEvent(ctx context.Context, ce cloudevents.Event) error {
 	e, err := json.Marshal(ce)
 	if err != nil {
@@ -81,4 +80,10 @@ func CloudEvent(ctx context.Context, ce cloudevents.Event) error {
 	}
 
 	return nil
+}
+
+// Register declarative functions
+func init() {
+	funcframework.HTTP("declarativeHTTP", HTTP)
+	funcframework.CloudEvent("declarativeCloudEvent", CloudEvent)
 }
