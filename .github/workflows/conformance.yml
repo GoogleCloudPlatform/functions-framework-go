@@ -52,9 +52,11 @@ jobs:
         startDelay: 5
     - name: Run HTTP conformance tests using declarative API
       uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.2.1
+      env:
+        FUNCTION_TARGET: 'declarativeHTTP'
       with:
         version: 'v1.2.1'
         functionType: 'http'
         useBuildpacks: false
-        cmd: "'FUNCTION_TARGET=declarativeHTTP go run testdata/conformance/cmd/declarative/main.go'"
+        cmd: "'go run testdata/conformance/cmd/declarative/main.go'"
         startDelay: 5
