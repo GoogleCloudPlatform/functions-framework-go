@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.3.0...v1.4.0) (2021-11-02)
+
+
+### Features
+
+* init declarative functions go ([#92](https://www.github.com/GoogleCloudPlatform/functions-framework-go/issues/92)) ([ae1bf32](https://www.github.com/GoogleCloudPlatform/functions-framework-go/commit/ae1bf320be8ff6eef0863a5c5961ff9413d011a8))
+
+
+### Bug Fixes
+
+* use standard RFC3339 time formatting ([#89](https://www.github.com/GoogleCloudPlatform/functions-framework-go/issues/89)) ([8218243](https://www.github.com/GoogleCloudPlatform/functions-framework-go/commit/82182437506b131034137b7d6cbb24e522bd213e))
+
 ## [1.3.0](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.2.1...v1.3.0) (2021-10-19)
 
 
