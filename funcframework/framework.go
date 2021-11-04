@@ -21,12 +21,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"reflect"
 	"runtime/debug"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/functions-framework-go/internal/registry"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
@@ -58,7 +60,6 @@ func RegisterHTTPFunction(path string, fn interface{}) {
 	defer recoverPanic("Registration panic")
 
 	fnHTTP, ok := fn.(func(http.ResponseWriter, *http.Request))
-
 	if !ok {
 		panic("expected function to have signature func(http.ResponseWriter, *http.Request)")
 	}
@@ -96,11 +97,43 @@ func RegisterCloudEventFunctionContext(ctx context.Context, path string, fn func
 	return registerCloudEventFunction(ctx, path, fn, handler)
 }
 
+// Declaratively registers a HTTP function.
+func HTTP(name string, fn func(http.ResponseWriter, *http.Request)) {
+	if err := registry.RegisterHTTP(name, fn); err != nil {
+		log.Fatalf("failure to register function: %s", err)
+	}
+}
+
+// Declaratively registers a CloudEvent function.
+func CloudEvent(name string, fn func(context.Context, cloudevents.Event) error) {
+	if err := registry.RegisterCloudEvent(name, fn); err != nil {
+		log.Fatalf("failure to register function: %s", err)
+	}
+}
+
 // Start serves an HTTP server with registered function(s).
 func Start(port string) error {
+	// If FUNCTION_TARGET, try to start with that registered function
+	// If not set, assume non-declarative functions.
+	target := os.Getenv("FUNCTION_TARGET")
+
 	// Check if we have a function resource set, and if so, log progress.
 	if os.Getenv("K_SERVICE") == "" {
-		fmt.Println("Serving function...")
+		fmt.Printf("Serving function: %s\n", target)
+	}
+
+	// Check if there's a registered function, and use if possible
+	if fn, ok := registry.GetRegisteredFunction(target); ok {
+		ctx := context.Background()
+		if fn.HTTPFn != nil {
+			if err := registerHTTPFunction("/", fn.HTTPFn, handler); err != nil {
+				return fmt.Errorf("unexpected error in registerHTTPFunction: %v", err)
+			}
+		} else if fn.CloudEventFn != nil {
+			if err := registerCloudEventFunction(ctx, "/", fn.CloudEventFn, handler); err != nil {
+				return fmt.Errorf("unexpected error in registerCloudEventFunction: %v", err)
+			}
+		}
 	}
 
 	return http.ListenAndServe(":"+port, handler)
@@ -133,6 +166,12 @@ func registerEventFunction(path string, fn interface{}, h *http.ServeMux) error 
 		}
 		defer recoverPanicHTTP(w, "Function panic")
 
+		if shouldConvertCloudEventToBackgroundRequest(r) {
+			if err := convertCloudEventToBackgroundRequest(r); err != nil {
+				writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("error converting CloudEvent to Background Event: %v", err))
+			}
+		}
+
 		handleEventFunction(w, r, fn)
 	})
 	return nil
@@ -155,9 +194,9 @@ func registerCloudEventFunction(ctx context.Context, path string, fn func(contex
 }
 
 func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{}) {
-	body, responseCode, err := readHTTPRequestBody(r)
+	body, err := readHTTPRequestBody(r)
 	if err != nil {
-		writeHTTPErrorResponse(w, responseCode, crashStatus, fmt.Sprintf("%v", err))
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("%v", err))
 		return
 	}
 
@@ -174,17 +213,17 @@ func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{})
 	runUserFunction(w, r, body, fn)
 }
 
-func readHTTPRequestBody(r *http.Request) ([]byte, int, error) {
+func readHTTPRequestBody(r *http.Request) ([]byte, error) {
 	if r.Body == nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("request body not found")
+		return nil, fmt.Errorf("request body not found")
 	}
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return nil, http.StatusUnsupportedMediaType, fmt.Errorf("Could not read request body %s: %v", r.Body, err)
+		return nil, fmt.Errorf("could not read request body %s: %v", r.Body, err)
 	}
 
-	return body, http.StatusOK, nil
+	return body, nil
 }
 
 func runUserFunction(w http.ResponseWriter, r *http.Request, data []byte, fn interface{}) {
@@ -194,7 +233,7 @@ func runUserFunction(w http.ResponseWriter, r *http.Request, data []byte, fn int
 func runUserFunctionWithContext(ctx context.Context, w http.ResponseWriter, r *http.Request, data []byte, fn interface{}) {
 	argVal := reflect.New(reflect.TypeOf(fn).In(1))
 	if err := json.Unmarshal(data, argVal.Interface()); err != nil {
-		writeHTTPErrorResponse(w, http.StatusUnsupportedMediaType, crashStatus, fmt.Sprintf("Error: %s, while converting event data: %s", err.Error(), string(data)))
+		writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, while converting event data: %s", err.Error(), string(data)))
 		return
 	}
 
@@ -213,7 +252,7 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 	if !strings.HasSuffix(msg, "\n") {
 		msg += "\n"
 	}
-	fmt.Fprintf(os.Stderr, msg)
+	fmt.Fprint(os.Stderr, msg)
 
 	// Flush stdout and stderr when running on GCF. This must be done before writing
 	// the HTTP response in order for all logs to appear in Stackdriver.
@@ -224,5 +263,10 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 
 	w.Header().Set(functionStatusHeader, status)
 	w.WriteHeader(statusCode)
-	fmt.Fprintf(w, msg)
+	fmt.Fprint(w, msg)
+}
+
+func overrideHandlerWithRegisteredFunctions(h *http.ServeMux) {
+	// override http handler for tests
+	handler = h
 }

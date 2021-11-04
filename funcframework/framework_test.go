@@ -22,9 +22,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/functions-framework-go/internal/registry"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestHTTPFunction(t *testing.T) {
@@ -66,7 +69,7 @@ type eventData struct {
 func TestEventFunction(t *testing.T) {
 	var tests = []struct {
 		name      string
-		data      []byte
+		body      []byte
 		fn        interface{}
 		status    int
 		header    string
@@ -74,7 +77,7 @@ func TestEventFunction(t *testing.T) {
 	}{
 		{
 			name: "valid function",
-			data: []byte(`{"id": 12345,"name": "custom"}`),
+			body: []byte(`{"id": 12345,"name": "custom"}`),
 			fn: func(c context.Context, s customStruct) error {
 				if s.ID != 12345 {
 					return fmt.Errorf("expected id=12345, got %d", s.ID)
@@ -89,16 +92,16 @@ func TestEventFunction(t *testing.T) {
 		},
 		{
 			name: "incorrect type",
-			data: []byte(`{"id": 12345,"name": 123}`),
+			body: []byte(`{"id": 12345,"name": 123}`),
 			fn: func(c context.Context, s customStruct) error {
 				return nil
 			},
-			status: http.StatusUnsupportedMediaType,
+			status: http.StatusBadRequest,
 			header: "crash",
 		},
 		{
 			name: "erroring function",
-			data: []byte(`{"id": 12345,"name": "custom"}`),
+			body: []byte(`{"id": 12345,"name": "custom"}`),
 			fn: func(c context.Context, s customStruct) error {
 				return fmt.Errorf("TestEventFunction(erroring function): this error should fire")
 			},
@@ -107,7 +110,7 @@ func TestEventFunction(t *testing.T) {
 		},
 		{
 			name: "pubsub event",
-			data: []byte(`{
+			body: []byte(`{
 				"context": {
 					"eventId": "1234567",
 					"timestamp": "2019-11-04T23:01:10.112Z",
@@ -135,7 +138,7 @@ func TestEventFunction(t *testing.T) {
 		},
 		{
 			name: "pubsub legacy event",
-			data: []byte(`{
+			body: []byte(`{
 				"eventId": "1234567",
 				"timestamp": "2019-11-04T23:01:10.112Z",
 				"eventType": "google.pubsub.topic.publish",
@@ -159,6 +162,74 @@ func TestEventFunction(t *testing.T) {
 			status: http.StatusOK,
 			header: "",
 		},
+		{
+			name: "cloudevent",
+			body: []byte(`{
+				"data": {
+				  "bucket": "some-bucket",
+				  "contentType": "text/plain",
+				  "crc32c": "rTVTeQ==",
+				  "etag": "CNHZkbuF/ugCEAE=",
+				  "generation": "1587627537231057",
+				  "id": "some-bucket/folder/Test.cs/1587627537231057",
+				  "kind": "storage#object",
+				  "md5Hash": "kF8MuJ5+CTJxvyhHS1xzRg==",
+				  "mediaLink": "https://www.googleapis.com/download/storage/v1/b/some-bucket/o/folder%2FTest.cs?generation=1587627537231057\u0026alt=media",
+				  "metageneration": "1",
+				  "name": "folder/Test.cs",
+				  "selfLink": "https://www.googleapis.com/storage/v1/b/some-bucket/o/folder/Test.cs",
+				  "size": "352",
+				  "storageClass": "MULTI_REGIONAL",
+				  "timeCreated": "2020-04-23T07:38:57.230Z",
+				  "timeStorageClassUpdated": "2020-04-23T07:38:57.230Z",
+				  "updated": "2020-04-23T07:38:57.230Z"
+				}
+			  }`),
+			fn: func(c context.Context, gotData map[string]interface{}) error {
+				want := `{
+					"data": {
+					  "bucket": "some-bucket",
+					  "contentType": "text/plain",
+					  "crc32c": "rTVTeQ==",
+					  "etag": "CNHZkbuF/ugCEAE=",
+					  "generation": "1587627537231057",
+					  "id": "some-bucket/folder/Test.cs/1587627537231057",
+					  "kind": "storage#object",
+					  "md5Hash": "kF8MuJ5+CTJxvyhHS1xzRg==",
+					  "mediaLink": "https://www.googleapis.com/download/storage/v1/b/some-bucket/o/folder%2FTest.cs?generation=1587627537231057\u0026alt=media",
+					  "metageneration": "1",
+					  "name": "folder/Test.cs",
+					  "selfLink": "https://www.googleapis.com/storage/v1/b/some-bucket/o/folder/Test.cs",
+					  "size": "352",
+					  "storageClass": "MULTI_REGIONAL",
+					  "timeCreated": "2020-04-23T07:38:57.230Z",
+					  "timeStorageClassUpdated": "2020-04-23T07:38:57.230Z",
+					  "updated": "2020-04-23T07:38:57.230Z"
+					}
+				  }`
+
+				var wantData map[string]interface{}
+				if err := json.Unmarshal([]byte(want), &wantData); err != nil {
+					return fmt.Errorf("unable to unmarshal test data: %s, error: %v", want, err)
+				}
+
+				if diff := cmp.Diff(wantData, gotData); diff != "" {
+					return fmt.Errorf("TestEventFunction() mismatch (-want +got):\n%s", diff)
+				}
+				return nil
+			},
+			status: http.StatusOK,
+			header: "",
+			ceHeaders: map[string]string{
+				"ce-specversion":     "1.0",
+				"ce-type":            "google.cloud.storage.object.v1.finalized",
+				"ce-source":          "//storage.googleapis.com/projects/_/buckets/some-bucket",
+				"ce-subject":         "objects/folder/Test.cs",
+				"ce-id":              "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				"ce-time":            "2020-09-29T11:32:00.000Z",
+				"ce-datacontenttype": "application/json",
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -170,9 +241,9 @@ func TestEventFunction(t *testing.T) {
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 
-		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.data))
+		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.body))
 		if err != nil {
-			t.Fatalf("http.NewRequest err: %v", err)
+			t.Fatalf("error creating HTTP request for test: %v", err)
 		}
 		req.Header.Set("Content-Type", "application/json")
 		for k, v := range tc.ceHeaders {
@@ -217,7 +288,7 @@ func TestCloudEventFunction(t *testing.T) {
 
 	var tests = []struct {
 		name      string
-		data      []byte
+		body      []byte
 		fn        func(context.Context, cloudevents.Event) error
 		status    int
 		header    string
@@ -225,7 +296,7 @@ func TestCloudEventFunction(t *testing.T) {
 	}{
 		{
 			name: "binary cloudevent",
-			data: []byte("<much wow=\"xml\"/>"),
+			body: []byte("<much wow=\"xml\"/>"),
 			fn: func(ctx context.Context, e cloudevents.Event) error {
 				if e.String() != testCE.String() {
 					return fmt.Errorf("TestCloudEventFunction(binary cloudevent): got: %v, want: %v", e, testCE)
@@ -248,7 +319,7 @@ func TestCloudEventFunction(t *testing.T) {
 		},
 		{
 			name: "structured cloudevent",
-			data: cloudeventsJSON,
+			body: cloudeventsJSON,
 			fn: func(ctx context.Context, e cloudevents.Event) error {
 				if e.String() != testCE.String() {
 					return fmt.Errorf("TestCloudEventFunction(structured cloudevent): got: %v, want: %v", e, testCE)
@@ -260,6 +331,81 @@ func TestCloudEventFunction(t *testing.T) {
 			ceHeaders: map[string]string{
 				"Content-Type": "application/cloudevents+json",
 			},
+		},
+		{
+			name: "background event",
+			body: []byte(`{
+				"context": {
+				   "eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				   "timestamp": "2020-09-29T11:32:00.000Z",
+				   "eventType": "google.storage.object.finalize",
+				   "resource": {
+					  "service": "storage.googleapis.com",
+					  "name": "projects/_/buckets/some-bucket/objects/folder/Test.cs",
+					  "type": "storage#object"
+				   }
+				},
+				"data": {
+				   "bucket": "some-bucket",
+				   "contentType": "text/plain",
+				   "crc32c": "rTVTeQ==",
+				   "etag": "CNHZkbuF/ugCEAE=",
+				   "generation": "1587627537231057",
+				   "id": "some-bucket/folder/Test.cs/1587627537231057",
+				   "kind": "storage#object",
+				   "md5Hash": "kF8MuJ5+CTJxvyhHS1xzRg==",
+				   "mediaLink": "https://www.googleapis.com/download/storage/v1/b/some-bucket/o/folder%2FTest.cs?generation=1587627537231057\u0026alt=media",
+				   "metageneration": "1",
+				   "name": "folder/Test.cs",
+				   "selfLink": "https://www.googleapis.com/storage/v1/b/some-bucket/o/folder/Test.cs",
+				   "size": "352",
+				   "storageClass": "MULTI_REGIONAL",
+				   "timeCreated": "2020-04-23T07:38:57.230Z",
+				   "timeStorageClassUpdated": "2020-04-23T07:38:57.230Z",
+				   "updated": "2020-04-23T07:38:57.230Z"
+				}
+			  }`),
+			fn: func(ctx context.Context, e cloudevents.Event) error {
+				want := `{
+					"specversion": "1.0",
+					"type": "google.cloud.storage.object.v1.finalized",
+					"source": "//storage.googleapis.com/projects/_/buckets/some-bucket",
+					"subject": "objects/folder/Test.cs",
+					"id": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+					"time": "2020-09-29T11:32:00.000Z",
+					"datacontenttype": "application/json",
+					"data": {
+					  "bucket": "some-bucket",
+					  "contentType": "text/plain",
+					  "crc32c": "rTVTeQ==",
+					  "etag": "CNHZkbuF/ugCEAE=",
+					  "generation": "1587627537231057",
+					  "id": "some-bucket/folder/Test.cs/1587627537231057",
+					  "kind": "storage#object",
+					  "md5Hash": "kF8MuJ5+CTJxvyhHS1xzRg==",
+					  "mediaLink": "https://www.googleapis.com/download/storage/v1/b/some-bucket/o/folder%2FTest.cs?generation=1587627537231057\u0026alt=media",
+					  "metageneration": "1",
+					  "name": "folder/Test.cs",
+					  "selfLink": "https://www.googleapis.com/storage/v1/b/some-bucket/o/folder/Test.cs",
+					  "size": "352",
+					  "storageClass": "MULTI_REGIONAL",
+					  "timeCreated": "2020-04-23T07:38:57.230Z",
+					  "timeStorageClassUpdated": "2020-04-23T07:38:57.230Z",
+					  "updated": "2020-04-23T07:38:57.230Z"
+					}
+				  }`
+				wantCE := cloudevents.NewEvent()
+				err := json.Unmarshal([]byte(want), &wantCE)
+				if err != nil {
+					return fmt.Errorf("error unmarshaling JSON to CloudEvent: %v", err)
+				}
+
+				if e.String() != wantCE.String() {
+					return fmt.Errorf("TestCloudEventFunction got: %s, want: %s", e.String(), wantCE.String())
+				}
+				return nil
+			},
+			status: http.StatusOK,
 		},
 	}
 
@@ -273,9 +419,9 @@ func TestCloudEventFunction(t *testing.T) {
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 
-		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.data))
+		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.body))
 		if err != nil {
-			t.Fatalf("http.NewRequest: %v", err)
+			t.Fatalf("error creating HTTP request for test: %v", err)
 		}
 		for k, v := range tc.ceHeaders {
 			req.Header.Add(k, v)
@@ -297,5 +443,29 @@ func TestCloudEventFunction(t *testing.T) {
 		if resp.Header.Get(functionStatusHeader) != tc.header {
 			t.Errorf("TestCloudEventFunction(%s): response header = %q, want %q", tc.name, resp.Header.Get(functionStatusHeader), tc.header)
 		}
+	}
+}
+
+func TestDeclarativeFunction(t *testing.T) {
+	funcName := "httpfunc"
+	os.Setenv("FUNCTION_TARGET", funcName)
+
+	h := http.NewServeMux()
+	overrideHandlerWithRegisteredFunctions(h)
+
+	// register functions
+	HTTP(funcName, func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "Hello World!")
+	})
+
+	if _, ok := registry.GetRegisteredFunction(funcName); !ok {
+		t.Fatalf("could not get registered function: %s", funcName)
+	}
+
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	if _, err := http.Get(srv.URL); err != nil {
+		t.Fatalf("could not make HTTP GET request to function: %s", err)
 	}
 }

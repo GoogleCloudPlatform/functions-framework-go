@@ -1,4 +1,8 @@
-# Functions Framework for Go  [![Build Status](https://travis-ci.com/GoogleCloudPlatform/functions-framework-go.svg?branch=master)](https://travis-ci.com/GoogleCloudPlatform/functions-framework-go) [![GoDoc](https://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go?status.svg)](http://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go) [![Go version](https://img.shields.io/badge/go-v1.11+-blue)](https://golang.org/dl/#stable)
+# Functions Framework for Go
+
+[![GoDoc](https://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go?status.svg)](http://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go) [![Go version](https://img.shields.io/badge/go-v1.11+-blue)](https://golang.org/dl/#stable)
+
+[![Go unit CI][ff_go_unit_img]][ff_go_unit_link] [![Go lint CI][ff_go_lint_img]][ff_go_lint_link] [![Go conformace CI][ff_go_conformance_img]][ff_go_conformance_link]
 
 An open source FaaS (Function as a Service) framework for writing portable
 Go functions, brought to you by the Google Cloud Functions team.
@@ -211,3 +215,41 @@ func CloudEventFunction(ctx context.Context, e cloudevents.Event) error {
 These functions are registered with the handler via `funcframework.RegisterCloudEventFunctionContext`.
 
 To learn more about CloudEvents, see the [Go SDK for CloudEvents](https://github.com/cloudevents/sdk-go).
+
+### Declarative Functions
+
+The Functions Framework also provides a way to declaratively define `HTTP` and `CloudEvent` functions:
+
+```golang
+package function
+
+import (
+	"net/http"
+
+	funcframework "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+)
+
+func init() {
+	funcframework.HTTP("hello", HelloWorld)
+	funcframework.CloudEvent("ce", CloudEvent)
+}
+
+func HelloWorld(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Hello, World!"))
+}
+
+func CloudEvent(ctx context.Context, e cloudevents.Event) error {
+	// Do something with event.Context and event.Data (via event.DataAs(foo)).
+	return nil
+}
+```
+
+Upon starting, the framework will listen to HTTP requests at `/` and invoke your registered function
+specified by the `FUNCTION_TARGET` environment variable (i.e. `FUNCTION_TARGET=hello`).
+
+[ff_go_unit_img]: https://github.com/GoogleCloudPlatform/functions-framework-go/workflows/Go%20Unit%20CI/badge.svg
+[ff_go_unit_link]: https://github.com/GoogleCloudPlatform/functions-framework-go/actions?query=workflow%3A"Go+Unit+CI"
+[ff_go_lint_img]: https://github.com/GoogleCloudPlatform/functions-framework-go/workflows/Go%20Lint%20CI/badge.svg
+[ff_go_lint_link]: https://github.com/GoogleCloudPlatform/functions-framework-go/actions?query=workflow%3A"Go+Lint+CI"
+[ff_go_conformance_img]: https://github.com/GoogleCloudPlatform/functions-framework-go/workflows/Go%20Conformance%20CI/badge.svg
+[ff_go_conformance_link]: https://github.com/GoogleCloudPlatform/functions-framework-go/actions?query=workflow%3A"Go+Conformance+CI"

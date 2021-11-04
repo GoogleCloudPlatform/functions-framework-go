@@ -12,24 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Binary that serves the CloudEvent conformance test function.
+// Binary that serves the HTTP conformance test function.
 package main
 
 import (
-	"context"
 	"log"
 	"os"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-	"github.com/GoogleCloudPlatform/functions-framework-go/testdata/conformance/function"
+	_ "github.com/GoogleCloudPlatform/functions-framework-go/testdata/conformance/function"
 )
 
+// Main function used for testing only:
+// FUNCTION_TARGET=declarativeHTTP go run testdata/conformance/cmd/declarative/main.go
+// FUNCTION_TARGET=declarativeCloudEvent go run testdata/conformance/cmd/declarative/main.go
 func main() {
-	ctx := context.Background()
-	if err := funcframework.RegisterCloudEventFunctionContext(ctx, "/", function.CloudEvent); err != nil {
-		log.Fatalf("Failed to register function: %v", err)
-	}
-
 	port := "8080"
 	if envPort := os.Getenv("PORT"); envPort != "" {
 		port = envPort
