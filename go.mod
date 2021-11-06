@@ -2,6 +2,8 @@ module github.com/GoogleCloudPlatform/functions-framework-go
 
 go 1.11
 
+retract v1.4.0
+
 require (
 	cloud.google.com/go v0.63.0
 	cloud.google.com/go/pubsub v1.3.1
