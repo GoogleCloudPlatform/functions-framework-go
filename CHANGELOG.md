@@ -1,5 +1,12 @@
 # Changelog
 
+### [1.4.1](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.4.0...v1.4.1) (2021-11-06)
+
+
+### Bug Fixes
+
+* let CloudEvent functions be registered multiple times ([#95](https://www.github.com/GoogleCloudPlatform/functions-framework-go/issues/95)) ([0e41555](https://www.github.com/GoogleCloudPlatform/functions-framework-go/commit/0e41555882aec93a322fb87c7a763fe98e78545a))
+
 ## [1.4.0](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.3.0...v1.4.0) (2021-11-02)
 
 
