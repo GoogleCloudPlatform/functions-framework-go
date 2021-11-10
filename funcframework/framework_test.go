@@ -25,6 +25,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/GoogleCloudPlatform/functions-framework-go/internal/registry"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/google/go-cmp/cmp"
@@ -455,11 +456,11 @@ func TestDeclarativeFunctionHTTP(t *testing.T) {
 	}
 
 	// register functions
-	HTTP(funcName, func(w http.ResponseWriter, r *http.Request) {
+	functions.HTTP(funcName, func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
 	})
 
-	if _, ok := registry.GetRegisteredFunction(funcName); !ok {
+	if _, ok := registry.Default().GetRegisteredFunction(funcName); !ok {
 		t.Fatalf("could not get registered function: %s", funcName)
 	}
 
@@ -480,9 +481,9 @@ func TestDeclarativeFunctionCloudEvent(t *testing.T) {
 	}
 
 	// register functions
-	CloudEvent(funcName, dummyCloudEvent)
+	functions.CloudEvent(funcName, dummyCloudEvent)
 
-	if _, ok := registry.GetRegisteredFunction(funcName); !ok {
+	if _, ok := registry.Default().GetRegisteredFunction(funcName); !ok {
 		t.Fatalf("could not get registered function: %s", funcName)
 	}
 

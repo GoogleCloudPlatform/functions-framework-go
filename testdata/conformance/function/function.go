@@ -24,13 +24,19 @@ import (
 	"net/http"
 
 	"cloud.google.com/go/functions/metadata"
-	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
 const (
 	outputFile = "function_output.json"
 )
+
+// Register declarative functions
+func init() {
+	functions.HTTP("declarativeHTTP", HTTP)
+	functions.CloudEvent("declarativeCloudEvent", CloudEvent)
+}
 
 // HTTP is a simple HTTP function that writes the request body to the response body.
 func HTTP(w http.ResponseWriter, r *http.Request) {
@@ -80,10 +86,4 @@ func CloudEvent(ctx context.Context, ce cloudevents.Event) error {
 	}
 
 	return nil
-}
-
-// Register declarative functions
-func init() {
-	funcframework.HTTP("declarativeHTTP", HTTP)
-	funcframework.CloudEvent("declarativeCloudEvent", CloudEvent)
 }

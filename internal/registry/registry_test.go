@@ -23,11 +23,12 @@ import (
 )
 
 func TestRegisterHTTP(t *testing.T) {
-	RegisterHTTP("httpfn", func(w http.ResponseWriter, r *http.Request) {
+	registry := New()
+	registry.RegisterHTTP("httpfn", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
 	})
 
-	fn, ok := GetRegisteredFunction("httpfn")
+	fn, ok := registry.GetRegisteredFunction("httpfn")
 	if !ok {
 		t.Fatalf("Expected function to be registered")
 	}
@@ -37,11 +38,12 @@ func TestRegisterHTTP(t *testing.T) {
 }
 
 func TestRegisterCE(t *testing.T) {
-	RegisterCloudEvent("cefn", func(context.Context, cloudevents.Event) error {
+	registry := New()
+	registry.RegisterCloudEvent("cefn", func(context.Context, cloudevents.Event) error {
 		return nil
 	})
 
-	fn, ok := GetRegisteredFunction("cefn")
+	fn, ok := registry.GetRegisteredFunction("cefn")
 	if !ok {
 		t.Fatalf("Expected function to be registered")
 	}
@@ -51,17 +53,18 @@ func TestRegisterCE(t *testing.T) {
 }
 
 func TestRegisterMultipleFunctions(t *testing.T) {
-	if err := RegisterHTTP("multifn1", func(w http.ResponseWriter, r *http.Request) {
+	registry := New()
+	if err := registry.RegisterHTTP("multifn1", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
 	}); err != nil {
 		t.Error("Expected \"multifn1\" function to be registered")
 	}
-	if err := RegisterHTTP("multifn2", func(w http.ResponseWriter, r *http.Request) {
+	if err := registry.RegisterHTTP("multifn2", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World 2!")
 	}); err != nil {
 		t.Error("Expected \"multifn2\" function to be registered")
 	}
-	if err := RegisterCloudEvent("multifn3", func(context.Context, cloudevents.Event) error {
+	if err := registry.RegisterCloudEvent("multifn3", func(context.Context, cloudevents.Event) error {
 		return nil
 	}); err != nil {
 		t.Error("Expected \"multifn3\" function to be registered")
@@ -69,13 +72,14 @@ func TestRegisterMultipleFunctions(t *testing.T) {
 }
 
 func TestRegisterMultipleFunctionsError(t *testing.T) {
-	if err := RegisterHTTP("samename", func(w http.ResponseWriter, r *http.Request) {
+	registry := New()
+	if err := registry.RegisterHTTP("samename", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
 	}); err != nil {
 		t.Error("Expected no error registering function")
 	}
 
-	if err := RegisterHTTP("samename", func(w http.ResponseWriter, r *http.Request) {
+	if err := registry.RegisterHTTP("samename", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World 2!")
 	}); err == nil {
 		t.Error("Expected error registering function with same name")
