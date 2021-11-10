@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.4.0...v1.5.0) (2021-11-10)
+
+
+### Features
+
+* move declarative function API into `functions` package ([#99](https://www.github.com/GoogleCloudPlatform/functions-framework-go/issues/99)) ([8f488f2](https://www.github.com/GoogleCloudPlatform/functions-framework-go/commit/8f488f29af1f7631a3a840c9b61ab6da0773a848))
+
+
+### Bug Fixes
+
+* let CloudEvent functions be registered multiple times ([#95](https://www.github.com/GoogleCloudPlatform/functions-framework-go/issues/95)) ([0e41555](https://www.github.com/GoogleCloudPlatform/functions-framework-go/commit/0e41555882aec93a322fb87c7a763fe98e78545a))
+
 ## [1.4.0](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.3.0...v1.4.0) (2021-11-02)
 
 
