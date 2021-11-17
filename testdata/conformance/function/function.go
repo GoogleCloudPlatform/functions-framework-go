@@ -23,8 +23,8 @@ import (
 	"log"
 	"net/http"
 
-	"cloud.google.com/go/functions/metadata"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+	"github.com/GoogleCloudPlatform/functions-framework-go/internal/metadata"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 

@@ -6,9 +6,8 @@ import (
 	"regexp"
 	"time"
 
-	"cloud.google.com/go/functions/metadata"
-	"cloud.google.com/go/pubsub"
 	"github.com/GoogleCloudPlatform/functions-framework-go/internal/fftypes"
+	"github.com/GoogleCloudPlatform/functions-framework-go/internal/metadata"
 )
 
 const (
@@ -26,15 +25,24 @@ type LegacyPushSubscriptionEvent struct {
 	Message      `json:"message"`
 }
 
-// Message is a pubsub.Message but with the correct JSON tag for the
-// message ID field that matches https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage
+// Message represents a Pub/Sub message.
 type Message struct {
-	pubsub.Message
-	// The pubsub libary's Message.Id field (https://pkg.go.dev/cloud.google.com/go/internal/pubsub#Message)
-	// doesn't have the correct JSON tag (it serializes to "id" instead of
-	// "messageId"), so use this field to capture the JSON field with key
-	// "messageId".
-	IdFromJSON string `json:"messageId"`
+	// ID identifies this message.
+	// This ID is assigned by the server and is populated for Messages obtained from a subscription.
+	// This field is read-only.
+	ID string `json:"messageId"`
+
+	// Data is the actual data in the message.
+	Data []byte `json:"data"`
+
+	// Attributes represents the key-value pairs the current message
+	// is labelled with.
+	Attributes map[string]string `json:"attributes"`
+
+	// The time at which the message was published.
+	// This is populated by the server for Messages obtained from a subscription.
+	// This field is read-only.
+	PublishTime time.Time `json:"publishTime"`
 }
 
 // ExtractTopicFromRequestPath extracts a Pub/Sub topic from a URL request path.
@@ -59,7 +67,7 @@ func (e *LegacyPushSubscriptionEvent) ToBackgroundEvent(topic string) *fftypes.B
 	}
 	return &fftypes.BackgroundEvent{
 		Metadata: &metadata.Metadata{
-			EventID:   e.IdFromJSON,
+			EventID:   e.ID,
 			Timestamp: timestamp,
 			EventType: pubsubEventType,
 			Resource: &metadata.Resource{
