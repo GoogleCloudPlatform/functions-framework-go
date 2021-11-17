@@ -1,5 +1,12 @@
 # Changelog
 
+### [1.5.1](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.5.0...v1.5.1) (2021-11-17)
+
+
+### Bug Fixes
+
+* minimize dependencies on 3P libraries ([#101](https://www.github.com/GoogleCloudPlatform/functions-framework-go/issues/101)) ([f5c1abd](https://www.github.com/GoogleCloudPlatform/functions-framework-go/commit/f5c1abdf826826d769ae8661ae8d65cfc48ff288))
+
 ## [1.5.0](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.4.0...v1.5.0) (2021-11-10)
 
 
