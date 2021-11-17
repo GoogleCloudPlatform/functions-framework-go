@@ -3,7 +3,7 @@
 package fftypes
 
 import (
-	"cloud.google.com/go/functions/metadata"
+	"github.com/GoogleCloudPlatform/functions-framework-go/internal/metadata"
 )
 
 // BackgroundEvent is the incoming payload to functions framework to trigger
