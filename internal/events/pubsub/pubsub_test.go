@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/functions/metadata"
 	"github.com/GoogleCloudPlatform/functions-framework-go/internal/fftypes"
-	"github.com/GoogleCloudPlatform/functions-framework-go/internal/metadata"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GoogleCloudPlatform/functions-framework-go/internal/metadata"
+	"cloud.google.com/go/functions/metadata"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
