@@ -1,5 +1,12 @@
 # Changelog
 
+### [1.5.2](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.5.1...v1.5.2) (2021-11-24)
+
+
+### Bug Fixes
+
+* make metadata.FromContext work again ([#103](https://www.github.com/GoogleCloudPlatform/functions-framework-go/issues/103)) ([2714714](https://www.github.com/GoogleCloudPlatform/functions-framework-go/commit/2714714d9ff985a6b6ed9822c5bc53f9ec8a18f7))
+
 ### [1.5.1](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.5.0...v1.5.1) (2021-11-17)
 
 
