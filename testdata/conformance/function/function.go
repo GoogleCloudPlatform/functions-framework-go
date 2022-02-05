@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 
 	"cloud.google.com/go/functions/metadata"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
@@ -35,7 +36,18 @@ const (
 // Register declarative functions
 func init() {
 	functions.HTTP("declarativeHTTP", HTTP)
+	functions.HTTP("concurrentHTTP", concurrentHTTP)
 	functions.CloudEvent("declarativeCloudEvent", CloudEvent)
+	functions.CloudEvent("concurrentCloudEvent", concurrentCloudEvent)
+}
+
+func concurrentHTTP(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(1 * time.Second)
+}
+
+func concurrentCloudEvent(ctx context.Context, ce cloudevents.Event) error {
+	time.Sleep(1 * time.Second)
+	return nil
 }
 
 // HTTP is a simple HTTP function that writes the request body to the response body.

@@ -46,3 +46,9 @@ client -buildpacks=false -type=legacyevent -cmd='go run testdata/conformance/cmd
 
 print_header "CLOUDEVENT CONFORMANCE TESTS"
 client -buildpacks=false -type=cloudevent -cmd='go run testdata/conformance/cmd/cloudevent/main.go' -start-delay 5 -validate-mapping=true
+
+print_header "HTTP CONCURRENCY TESTS"
+FUNCTION_TARGET=concurrentHTTP client -buildpacks=false -type=http -cmd='go run testdata/conformance/cmd/declarative/main.go' -start-delay 5 -validate-concurrency=true
+
+print_header "CLOUDEVENT CONCURRENCY TESTS"
+FUNCTION_TARGET=concurrentCloudEvent client -buildpacks=false -type=cloudevent -cmd='go run testdata/conformance/cmd/declarative/main.go' -start-delay 5 -validate-concurrency=true
