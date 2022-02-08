@@ -87,7 +87,7 @@ jobs:
         FUNCTION_TARGET: 'concurrentCloudEvent'
       with:
         version: 'v1.3.1'
-        functionType: 'http'
+        functionType: 'cloudevent'
         validateConcurrency: true
         useBuildpacks: false
         cmd: "'go run testdata/conformance/cmd/declarative/main.go'"
