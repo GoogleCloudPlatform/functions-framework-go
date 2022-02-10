@@ -35,28 +35,32 @@ const (
 	functionStatusHeader = "X-Google-Status"
 	crashStatus          = "crash"
 	errorStatus          = "error"
+	panicMessageTmpl     = "A panic occurred during %s. Please see logs for more details."
 )
 
 var (
 	handler http.Handler
 )
 
-func recoverPanic(msg string) {
+// recoverPanic recovers from a panic in a consistent manner. panicSrc should
+// describe what was happening when the panic was encountered, for example
+// "user function execution". w is an http.ResponseWriter to write a generic
+// response body to that does not expose the details of the panic; w can be
+// nil to skip this.
+func recoverPanic(w http.ResponseWriter, panicSrc string) {
 	if r := recover(); r != nil {
-		fmt.Fprintf(os.Stderr, "%s: %v\n\n%s", msg, r, debug.Stack())
-	}
-}
-
-func recoverPanicHTTP(w http.ResponseWriter, msg string) {
-	if r := recover(); r != nil {
-		writeHTTPErrorResponse(w, http.StatusInternalServerError, crashStatus, fmt.Sprintf("%s: %v\n\n%s", msg, r, debug.Stack()))
+		genericMsg := fmt.Sprintf(panicMessageTmpl, panicSrc)
+		fmt.Fprintf(os.Stderr, fmt.Sprintf("%s\npanic message: %v\nstack trace: %s", genericMsg, r, debug.Stack()))
+		if w != nil {
+			writeHTTPErrorResponse(w, http.StatusInternalServerError, crashStatus, genericMsg)
+		}
 	}
 }
 
 // RegisterHTTPFunction registers fn as an HTTP function.
 // Maintained for backward compatibility. Please use RegisterHTTPFunctionContext instead.
 func RegisterHTTPFunction(path string, fn interface{}) {
-	defer recoverPanic("Registration panic")
+	defer recoverPanic(nil, "function registration")
 
 	fnHTTP, ok := fn.(func(http.ResponseWriter, *http.Request))
 	if !ok {
@@ -72,8 +76,8 @@ func RegisterHTTPFunction(path string, fn interface{}) {
 // RegisterEventFunction registers fn as an event function.
 // Maintained for backward compatibility. Please use RegisterEventFunctionContext instead.
 func RegisterEventFunction(path string, fn interface{}) {
-	defer recoverPanic("Registration panic")
 	ctx := context.Background()
+	defer recoverPanic(nil, "function registration")
 	if err := RegisterEventFunctionContext(ctx, path, fn); err != nil {
 		panic(fmt.Sprintf("unexpected error in RegisterEventFunctionContext: %v", err))
 	}
@@ -149,7 +153,7 @@ func wrapHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request)) 
 			defer fmt.Println()
 			defer fmt.Fprintln(os.Stderr)
 		}
-		defer recoverPanicHTTP(w, "Function panic")
+		defer recoverPanic(w, "user function execution")
 		fn(w, r)
 	})
 	return h, nil
@@ -167,7 +171,6 @@ func wrapEventFunction(path string, fn interface{}) (http.Handler, error) {
 			defer fmt.Println()
 			defer fmt.Fprintln(os.Stderr)
 		}
-		defer recoverPanicHTTP(w, "Function panic")
 
 		if shouldConvertCloudEventToBackgroundRequest(r) {
 			if err := convertCloudEventToBackgroundRequest(r); err != nil {
@@ -238,6 +241,7 @@ func runUserFunctionWithContext(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
+	defer recoverPanic(w, "user function execution")
 	userFunErr := reflect.ValueOf(fn).Call([]reflect.Value{
 		reflect.ValueOf(ctx),
 		argVal.Elem(),

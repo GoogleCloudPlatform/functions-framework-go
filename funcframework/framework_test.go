@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
@@ -32,29 +33,61 @@ import (
 )
 
 func TestHTTPFunction(t *testing.T) {
-	h, err := wrapHTTPFunction("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Hello World!")
-	})
-	if err != nil {
-		t.Fatalf("registerHTTPFunction(): %v", err)
+	tests := []struct {
+		name       string
+		fn         func(w http.ResponseWriter, r *http.Request)
+		wantStatus int // defaults to http.StatusOK
+		wantResp   string
+	}{
+		{
+			name: "helloworld",
+			fn: func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, "Hello World!")
+			},
+			wantResp: "Hello World!",
+		},
+		{
+			name: "panic in function",
+			fn: func(w http.ResponseWriter, r *http.Request) {
+				panic("intentional panic for test")
+			},
+			wantStatus: http.StatusInternalServerError,
+			wantResp:   fmt.Sprintf(panicMessageTmpl, "user function execution"),
+		},
 	}
 
-	srv := httptest.NewServer(h)
-	defer srv.Close()
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			h, err := wrapHTTPFunction("/", tc.fn)
+			if err != nil {
+				t.Fatalf("registerHTTPFunction(): %v", err)
+			}
 
-	resp, err := http.Get(srv.URL)
-	if err != nil {
-		t.Fatalf("http.Get: %v", err)
-	}
+			srv := httptest.NewServer(h)
+			defer srv.Close()
 
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("ioutil.ReadAll: %v", err)
-	}
+			resp, err := http.Get(srv.URL)
+			if err != nil {
+				t.Fatalf("http.Get: %v", err)
+			}
 
-	if got, want := string(body), "Hello World!"; got != want {
-		t.Fatalf("TestHTTPFunction: got %v; want %v", got, want)
+			if tc.wantStatus == 0 {
+				tc.wantStatus = http.StatusOK
+			}
+			if resp.StatusCode != tc.wantStatus {
+				t.Errorf("TestHTTPFunction status code: got %d, want: %d", resp.StatusCode, tc.wantStatus)
+			}
+
+			defer resp.Body.Close()
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("ioutil.ReadAll: %v", err)
+			}
+
+			if got := strings.TrimSpace(string(body)); got != tc.wantResp {
+				t.Errorf("TestHTTPFunction: got %q; want: %q", got, tc.wantResp)
+			}
+		})
 	}
 }
 
@@ -108,6 +141,15 @@ func TestEventFunction(t *testing.T) {
 			},
 			status: http.StatusInternalServerError,
 			header: "error",
+		},
+		{
+			name: "panicking function",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(c context.Context, s customStruct) error {
+				panic("intential panic for test")
+			},
+			status: http.StatusInternalServerError,
+			header: "crash",
 		},
 		{
 			name: "pubsub event",
@@ -255,6 +297,14 @@ func TestEventFunction(t *testing.T) {
 		if err != nil {
 			t.Errorf("client.Do(%s): %v", tc.name, err)
 			continue
+		}
+
+		gotBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("unable to read got request body: %v", err)
+		}
+		if resp.StatusCode != http.StatusOK && string(gotBody) != "" {
+			t.Errorf("TestCloudEventFunction(%s): response body = %q, want %q on error status code %d.", tc.name, gotBody, "", tc.status)
 		}
 
 		if resp.StatusCode != tc.status {
@@ -406,6 +456,17 @@ func TestCloudEventFunction(t *testing.T) {
 			},
 			status: http.StatusOK,
 		},
+		{
+			name: "panic returns 500",
+			body: cloudeventsJSON,
+			fn: func(ctx context.Context, e cloudevents.Event) error {
+				panic("intentional panic for test")
+			},
+			status: http.StatusInternalServerError,
+			ceHeaders: map[string]string{
+				"Content-Type": "application/cloudevents+json",
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -430,6 +491,14 @@ func TestCloudEventFunction(t *testing.T) {
 		if err != nil {
 			t.Errorf("client.Do(%s): %v", tc.name, err)
 			continue
+		}
+
+		gotBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("unable to read got request body: %v", err)
+		}
+		if resp.StatusCode != http.StatusOK && string(gotBody) != "" {
+			t.Errorf("TestCloudEventFunction(%s): response body = %q, want %q on error status code %d.", tc.name, gotBody, "", tc.status)
 		}
 
 		if resp.StatusCode != tc.status {
