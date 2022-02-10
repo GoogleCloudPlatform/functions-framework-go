@@ -1,5 +1,12 @@
 # Changelog
 
+### [1.5.3](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.5.2...v1.5.3) (2022-02-10)
+
+
+### Bug Fixes
+
+* return generic error message when function panics ([#111](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/111)) ([e25c08a](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/e25c08a01bc0b424edcf5e010aa4099c0797020e))
+
 ### [1.5.2](https://www.github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.5.1...v1.5.2) (2021-11-24)
 
 
