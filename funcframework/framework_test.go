@@ -108,6 +108,7 @@ func TestEventFunction(t *testing.T) {
 		status    int
 		header    string
 		ceHeaders map[string]string
+		wantResp  string
 	}{
 		{
 			name: "valid function",
@@ -148,8 +149,9 @@ func TestEventFunction(t *testing.T) {
 			fn: func(c context.Context, s customStruct) error {
 				panic("intential panic for test")
 			},
-			status: http.StatusInternalServerError,
-			header: "crash",
+			status:   http.StatusInternalServerError,
+			header:   "crash",
+			wantResp: fmt.Sprintf(panicMessageTmpl, "user function execution"),
 		},
 		{
 			name: "pubsub event",
@@ -299,12 +301,14 @@ func TestEventFunction(t *testing.T) {
 			continue
 		}
 
-		gotBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatalf("unable to read got request body: %v", err)
-		}
-		if resp.StatusCode != http.StatusOK && string(gotBody) != "" {
-			t.Errorf("TestCloudEventFunction(%s): response body = %q, want %q on error status code %d.", tc.name, gotBody, "", tc.status)
+		if tc.wantResp != "" {
+			gotBody, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("unable to read got request body: %v", err)
+			}
+			if strings.TrimSpace(string(gotBody)) != tc.wantResp {
+				t.Errorf("TestCloudEventFunction(%s): response body = %q, want %q on error status code %d.", tc.name, string(gotBody), tc.wantResp, tc.status)
+			}
 		}
 
 		if resp.StatusCode != tc.status {
