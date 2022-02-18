@@ -7,3 +7,9 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.6.1
 	github.com/google/go-cmp v0.5.6
 )
+
+retract (
+	// Declarative registration functions were in the wrong package that
+	// caused container build breaks.
+	v1.4.0
+)
