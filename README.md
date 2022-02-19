@@ -114,7 +114,7 @@ handling logic.
 	```
 
 	Upon starting, the framework will listen to HTTP requests at `/` and invoke your registered function
-	specified by the `FUNCTION_TARGET` environment variable (i.e. `FUNCTION_TARGET=hello`).
+	specified by the `FUNCTION_TARGET` environment variable (i.e. `FUNCTION_TARGET=HelloWorld`).
 
 1. Send requests to this function using `curl` from another terminal window:
 	```sh
