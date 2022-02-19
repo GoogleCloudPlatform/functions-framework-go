@@ -55,21 +55,27 @@ handling logic.
 
 1. Create a `function.go` file with the following contents:
 	```golang
-	package hello
+	package function
 
 	import (
 		"net/http"
-		"fmt"
+
+		"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	)
 
-	// HelloWorld writes "Hello, World!" to the HTTP response.
-	func HelloWorld(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Hello, World!\n")
+	func init() {
+		functions.HTTP("HelloWorld", helloWorld)
+	}
+
+	func helloWorld(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello, World!"))
 	}
 	```
 
 	> Note that you can use any file name or package name (convention is to make
 	package name same as directory name).
+
+1. Run `go mod tidy` to updated dependency requirements.
 
 1. To run locally, you'll need to create a main package to start your server
    (see instructions below for container builds to skip this step and match your
@@ -89,10 +95,6 @@ handling logic.
 		"example.com/hello"
 	)
 	func main() {
-		ctx := context.Background()
-		if err := funcframework.RegisterHTTPFunctionContext(ctx, "/", hello.HelloWorld); err != nil {
-			log.Fatalf("funcframework.RegisterHTTPFunctionContext: %v\n", err)
-		}
 		// Use PORT environment variable, or default to 8080.
 		port := "8080"
 		if envPort := os.Getenv("PORT"); envPort != "" {
@@ -110,6 +112,9 @@ handling logic.
 	go run main.go
 	# Output: Serving function...
 	```
+
+	Upon starting, the framework will listen to HTTP requests at `/` and invoke your registered function
+	specified by the `FUNCTION_TARGET` environment variable (i.e. `FUNCTION_TARGET=hello`).
 
 1. Send requests to this function using `curl` from another terminal window:
 	```sh
@@ -168,12 +173,50 @@ launchable container to run the server.
 The Framework provides support for handling native Go HTTP-style functions:
 
 ```golang
-func HTTPFunction(w http.ResponseWriter, r *http.Request) error {
-	// Do something with r, and write response to w.
+package function
+
+import (
+	"net/http"
+
+	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+)
+
+func init() {
+	functions.HTTP("HelloWorld", helloWorld)
+}
+
+func helloWorld(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Hello, World!"))
 }
 ```
 
-These functions are registered with the handler via `funcframework.RegisterHTTPFunctionContext`.
+### CloudEvent Functions
+
+The Functions Framework provides support for unmarshalling an incoming
+[CloudEvent](https://cloudevents.io/) payload into a `cloudevents.Event` object.
+These will be passed as arguments to your function when it receives a request.
+
+```golang
+package function
+
+import (
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+)
+
+func init() {
+	functions.CloudEvent("CloudEventFunc", CloudEvent)
+}
+
+func cloudEventFunc(ctx context.Context, e cloudevents.Event) error {
+	// Do something with event.Context and event.Data (via event.DataAs(foo)).
+	return nil
+}
+```
+
+These functions are registered with the handler via `funcframework.RegisterCloudEventFunctionContext`.
+
+To learn more about CloudEvents, see the [Go SDK for CloudEvents](https://github.com/cloudevents/sdk-go).
 
 ### Background Event Functions
 
@@ -198,54 +241,7 @@ metadata under a functions-specific key. This data is accesible via the `cloud.g
 m := metadata.FromContext(ctx)
 ```
 
-These functions are registered with the handler via `funcframework.RegisterEventFunctionContext`.
-
-### CloudEvent Functions
-
-The Functions Framework provides support for unmarshalling an incoming
-[CloudEvent](https://cloudevents.io/) payload into a `cloudevents.Event` object.
-These will be passed as arguments to your function when it receives a request.
-
-```golang
-func CloudEventFunction(ctx context.Context, e cloudevents.Event) error {
-	// Do something with event.Context and event.Data (via event.DataAs(foo)).
-}
-```
-
-These functions are registered with the handler via `funcframework.RegisterCloudEventFunctionContext`.
-
-To learn more about CloudEvents, see the [Go SDK for CloudEvents](https://github.com/cloudevents/sdk-go).
-
-### Declarative Functions
-
-The Functions Framework also provides a way to declaratively define `HTTP` and `CloudEvent` functions:
-
-```golang
-package function
-
-import (
-	"net/http"
-
-	funcframework "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-)
-
-func init() {
-	funcframework.HTTP("hello", HelloWorld)
-	funcframework.CloudEvent("ce", CloudEvent)
-}
-
-func HelloWorld(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello, World!"))
-}
-
-func CloudEvent(ctx context.Context, e cloudevents.Event) error {
-	// Do something with event.Context and event.Data (via event.DataAs(foo)).
-	return nil
-}
-```
-
-Upon starting, the framework will listen to HTTP requests at `/` and invoke your registered function
-specified by the `FUNCTION_TARGET` environment variable (i.e. `FUNCTION_TARGET=hello`).
+These functions can be registered in `main.go` for local testing with the handler via `funcframework.RegisterEventFunctionContext`.
 
 [ff_go_unit_img]: https://github.com/GoogleCloudPlatform/functions-framework-go/workflows/Go%20Unit%20CI/badge.svg
 [ff_go_unit_link]: https://github.com/GoogleCloudPlatform/functions-framework-go/actions?query=workflow%3A"Go+Unit+CI"
