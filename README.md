@@ -58,6 +58,7 @@ handling logic.
 	package function
 
 	import (
+		"fmt"
 		"net/http"
 
 		"github.com/GoogleCloudPlatform/functions-framework-go/functions"
@@ -67,15 +68,14 @@ handling logic.
 		functions.HTTP("HelloWorld", helloWorld)
 	}
 
+	// helloWorld writes "Hello, World!" to the HTTP response.
 	func helloWorld(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello, World!"))
+		fmt.Fprintln(w, "Hello, World!")
 	}
 	```
 
 	> Note that you can use any file name or package name (convention is to make
 	package name same as directory name).
-
-1. Run `go mod tidy` to updated dependency requirements.
 
 1. To run locally, you'll need to create a main package to start your server
    (see instructions below for container builds to skip this step and match your
@@ -87,13 +87,16 @@ handling logic.
 1. Create a `cmd/main.go` file with the following contents:
 	```golang
 	package main
+
 	import (
 		"log"
 		"os"
-		"context"
+
+		// Blank-import the function package so the init() runs
+		_ "example.com/hello"
 		"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-		"example.com/hello"
 	)
+
 	func main() {
 		// Use PORT environment variable, or default to 8080.
 		port := "8080"
@@ -106,11 +109,13 @@ handling logic.
 	}
 	```
 
+1. Run `go mod tidy` to update dependency requirements.
+
 1. Start the local development server:
 	```sh
-	cd cmd
-	go run main.go
-	# Output: Serving function...
+	export FUNCTION_TARGET=HelloWorld
+	go run cmd/main.go
+	# Output: Serving function: HelloWorld
 	```
 
 	Upon starting, the framework will listen to HTTP requests at `/` and invoke your registered function
