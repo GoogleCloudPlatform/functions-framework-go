@@ -43,6 +43,18 @@ type Message struct {
 	// This is populated by the server for Messages obtained from a subscription.
 	// This field is read-only.
 	PublishTime time.Time `json:"publishTime"`
+	
+	// DeliveryAttempt is the number of times a message has been delivered.
+	// This is part of the dead lettering feature that forwards messages that
+	// fail to be processed (from nack/ack deadline timeout) to a dead letter topic.
+	// If dead lettering is enabled, this will be set on all attempts, starting
+	// with value 1. Otherwise, the value will be nil.
+	// This field is read-only.
+	DeliveryAttempt *int
+
+	// OrderingKey identifies related messages for which publish order should
+	// be respected. If empty string is used, message will be sent unordered.
+	OrderingKey string
 }
 
 // ExtractTopicFromRequestPath extracts a Pub/Sub topic from a URL request path.
