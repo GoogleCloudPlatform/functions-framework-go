@@ -13,6 +13,11 @@
 # Defaults to the latest version of the repo, which may be ahead of the
 # latest release.
 
+# exit when any command fails
+set -e
+
+cd $(dirname $0)
+
 CLIENT_VERSION=$1
 if [ $CLIENT_VERSION ]; then
     CLIENT_VERSION="@$CLIENT_VERSION"
@@ -39,16 +44,16 @@ go install github.com/GoogleCloudPlatform/functions-framework-conformance/client
 echo "Done installing client$CLIENT_VERSION"
 
 print_header "HTTP CONFORMANCE TESTS"
-client -buildpacks=false -type=http -cmd='go run testdata/conformance/cmd/http/main.go' -start-delay 5 -validate-mapping=true
+client -buildpacks=false -type=http -cmd='go run cmd/http/main.go' -start-delay 1 -validate-mapping=true
 
 print_header "BACKGROUND EVENT CONFORMANCE TESTS"
-client -buildpacks=false -type=legacyevent -cmd='go run testdata/conformance/cmd/legacyevent/main.go' -start-delay 5 -validate-mapping=true
+client -buildpacks=false -type=legacyevent -cmd='go run cmd/legacyevent/main.go' -start-delay 1 -validate-mapping=true
 
 print_header "CLOUDEVENT CONFORMANCE TESTS"
-client -buildpacks=false -type=cloudevent -cmd='go run testdata/conformance/cmd/cloudevent/main.go' -start-delay 5 -validate-mapping=true
+client -buildpacks=false -type=cloudevent -cmd='go run cmd/cloudevent/main.go' -start-delay 1 -validate-mapping=true
 
 print_header "HTTP CONCURRENCY TESTS"
-FUNCTION_TARGET=concurrentHTTP client -buildpacks=false -type=http -cmd='go run testdata/conformance/cmd/declarative/main.go' -start-delay 5 -validate-concurrency=true
+FUNCTION_TARGET=concurrentHTTP client -buildpacks=false -type=http -cmd='go run cmd/declarative/main.go' -start-delay 1 -validate-concurrency=true
 
 print_header "CLOUDEVENT CONCURRENCY TESTS"
-FUNCTION_TARGET=concurrentCloudEvent client -buildpacks=false -type=cloudevent -cmd='go run testdata/conformance/cmd/declarative/main.go' -start-delay 5 -validate-concurrency=true
+FUNCTION_TARGET=concurrentCloudEvent client -buildpacks=false -type=cloudevent -cmd='go run cmd/declarative/main.go' -start-delay 1 -validate-concurrency=true

@@ -1,0 +1,60 @@
+name: 'Run conformance tests'
+description: 'Run the functions framework conformance tests with specified parameters.'
+inputs:
+  version:
+    description: 'version of the conformance tests to run. Defaults to latest release if unspecified.'
+    default: ''
+  outputFile:
+    description: 'output file from function'
+    default: 'function_output.json'
+  functionType:
+    description: 'type of function'
+    default: 'http'
+  validateMapping:
+    description: 'whether to validate mapping from legacy->cloud event and vice versa'
+    default: true
+  validateConcurrency:
+    description: 'whether to validate concurrent requests can be handled, requires a function that sleeps for 1 second'
+    default: false
+  source:
+    description: 'function source code'
+    default: ''
+  target:
+    description: 'function target'
+    default: ''
+  runtime:
+    description: 'function runtime (e.g. nodejs10, go113)'
+    default: ''
+  tag:
+    description: 'GCR tag to use for builder image'
+    default: 'latest'
+  useBuildpacks:
+    description: 'GCR tag to use for builder image'
+    default: true
+  cmd:
+    description: 'command to run a Functions Framework server at localhost:8080. Ignored if -buildpacks=true.'
+    default: ''
+  startDelay:
+    description: 'GCR tag to use for builder image'
+    default: 1
+  workingDirectory:
+    description: 'The subdirectory in which the conformance tests should run'
+    default: ""
+runs:
+  using: 'composite'
+  steps:
+    - name: Run conformance test
+      run: |
+        client \
+          -output-file=${{ inputs.outputFile }} \
+          -type=${{ inputs.functionType }} \
+          -validate-mapping=${{ inputs.validateMapping }} \
+          -validate-concurrency=${{ inputs.validateConcurrency }} \
+          -builder-source=${{ inputs.source }} \
+          -builder-target=${{ inputs.target }} \
+          -builder-runtime=${{ inputs.runtime }} \
+          -builder-tag=${{ inputs.tag }} \
+          -buildpacks=${{ inputs.useBuildpacks }} \
+          -cmd=${{ inputs.cmd }} \
+          -start-delay=${{ inputs.startDelay }}
+      shell: bash

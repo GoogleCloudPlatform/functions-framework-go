@@ -1,0 +1,15 @@
+name: Pull Request Actions
+on:
+  pull_request_review:
+    branches:
+      - master
+    types: [submitted]
+  workflow_dispatch:
+
+jobs:
+  # Download and cache the Functions Framework conformance test client
+  download-conformance-client:
+    runs-on: ubuntu-latest 
+    steps:
+      - if: ${{ github.event.review.state == 'approved' }}
+        run: echo ${{ github.event }}

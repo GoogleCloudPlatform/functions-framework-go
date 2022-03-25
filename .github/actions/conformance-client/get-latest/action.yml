@@ -1,0 +1,11 @@
+name: 'Get Version of Latest Conformance Test Client'
+description: 'Returns the latest version of the conformance test client'
+outputs:
+  version:
+runs:
+  using: "composite"
+  steps:
+    - name: Install client
+      run: |
+        echo "::set-output name=version::$(curl --silent "https://api.github.com/repos/GoogleCloudPlatform/functions-framework-conformance/releases/latest" | jq -r '.tag_name')"
+      shell: bash

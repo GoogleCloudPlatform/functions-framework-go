@@ -1,0 +1,23 @@
+name: GCF Buildpack Integration Test
+on:
+  workflow_dispatch:
+jobs:
+  go113:
+      uses: anniefu/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@master
+      with:
+        http-builder-source: 'testdata/conformance/function'
+        http-builder-target: 'declarativeHTTP'
+        cloudevent-builder-source: 'testdata/conformance/function'
+        cloudevent-builder-target: 'declarativeCloudEvent'
+        prerun: 'testdata/conformance/ function/prerun.sh ${{ github.sha }}'
+        builder-runtime: 'go113'
+        builder-tag: 'go113_20220320_1_13_15_RC00'
+  # go116:
+  #   uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.4.0
+  #   with:
+  #     http-builder-source: 'testdata/conformance/function'
+  #     http-builder-target: 'declarativeHTTP'
+  #     cloudevent-builder-source: 'testdata/conformance/function'
+  #     cloudevent-builder-target: 'declarativeCloudEvent'
+  #     builder-runtime: 'go116'
+  #     builder-tag: 'go116_20220320_1_16_13_RC00'

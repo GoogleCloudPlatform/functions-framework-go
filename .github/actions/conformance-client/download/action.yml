@@ -1,0 +1,22 @@
+name: 'Download Conformance Test Client'
+description: 'Downloads and caches conformance test client'
+inputs:
+  client-version:
+    default: 'latest'
+  cache-key:
+    default: conformance-client-latest
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.x
+    - name: Install client
+      run: go install github.com/GoogleCloudPlatform/functions-framework-conformance/client@${{ inputs.client-version }}
+      shell: bash
+    - name: Cache client
+      uses: actions/cache@v3
+      with:
+        path: ~/go/bin/client
+        key: ${{ inputs.cache-key }}
