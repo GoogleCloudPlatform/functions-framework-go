@@ -210,7 +210,7 @@ import (
 )
 
 func init() {
-	functions.CloudEvent("CloudEventFunc", CloudEvent)
+	functions.CloudEvent("CloudEventFunc", cloudEventFunc)
 }
 
 func cloudEventFunc(ctx context.Context, e cloudevents.Event) error {
