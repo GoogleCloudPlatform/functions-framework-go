@@ -1,0 +1,41 @@
+# Validates Functions Framework at a specific commit and uses the
+# Release Please GitHub Action to create a PR that can be approved & merged
+# to generate a GitHub Release.
+name: Create Release Candidate
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  go113-buildpack-test:
+    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.4.0
+    with:
+      http-builder-source: 'testdata/conformance/function'
+      http-builder-target: 'declarativeHTTP'
+      cloudevent-builder-source: 'testdata/conformance/function'
+      cloudevent-builder-target: 'declarativeCloudEvent'
+      prerun: 'testdata/conformance/function/prerun.sh ${{ github.sha }}'
+      builder-runtime: 'go113'
+      builder-tag: 'go113_20220320_1_13_15_RC00'
+  go116-buildpack-test:
+    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.4.0
+    with:
+      http-builder-source: 'testdata/conformance/function'
+      http-builder-target: 'declarativeHTTP'
+      cloudevent-builder-source: 'testdata/conformance/function'
+      cloudevent-builder-target: 'declarativeCloudEvent'
+      prerun: 'testdata/conformance/function/prerun.sh ${{ github.sha }}'
+      builder-runtime: 'go116'
+      builder-tag: 'go116_20220320_1_16_13_RC00'
+  release-please:
+    # Release candidate PRs cannot be created unless the commit passes
+    # validation
+    needs:
+      - go113-buildpack-test
+      - go116-buildpack-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v3
+        with:
+          release-type: go
