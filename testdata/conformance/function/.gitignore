@@ -1,0 +1,5 @@
+# These files should only be present when trying to build with buildpacks.
+# The `cmd/**/main.go` files will not be able to find the `function` package
+# if a `go.mod` is present due to differences in how modules are imported.
+go.mod
+go.sum
