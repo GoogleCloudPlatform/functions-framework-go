@@ -7,7 +7,7 @@
 # locally using the `main.go` files in the `cmd` directory.`
 #
 # `pack` build example command:
-# pack build myfn --builder us.gcr.io/fn-img/buildpacks/go116/builder:go116_20220320_1_16_13_RC00 --env GOOGLE_RUNTIME=go113 --env GOOGLE_FUNCTION_TARGET=declarativeHTTP
+# pack build myfn --builder us.gcr.io/fn-img/buildpacks/go116/builder:go116_20220320_1_16_13_RC00 --env GOOGLE_RUNTIME=go116 --env GOOGLE_FUNCTION_TARGET=declarativeHTTP
 FRAMEWORK_VERSION=$1
 
 # exit when any command fails
@@ -27,9 +27,8 @@ go 1.13
 
 require (
         cloud.google.com/go/functions v1.0.0
-        github.com/GoogleCloudPlatform/functions-framework-go v0.0.0
+        github.com/GoogleCloudPlatform/functions-framework-go $FRAMEWORK_VERSION
         github.com/cloudevents/sdk-go/v2 v2.6.1
 )" >> go.mod
 
-go mod edit -require=github.com/GoogleCloudPlatform/functions-framework-go@$FRAMEWORK_VERSION
 cat go.mod
