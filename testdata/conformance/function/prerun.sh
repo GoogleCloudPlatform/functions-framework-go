@@ -5,6 +5,9 @@
 # This should only be used for testing with buildpacks since the `go.mod` will
 # cause problems with import paths when trying to run conformance test functions
 # locally using the `main.go` files in the `cmd` directory.`
+#
+# `pack` build example command:
+# pack build myfn --builder us.gcr.io/fn-img/buildpacks/go116/builder:go116_20220320_1_16_13_RC00 --env GOOGLE_RUNTIME=go113 --env GOOGLE_FUNCTION_TARGET=declarativeHTTP
 FRAMEWORK_VERSION=$1
 
 # exit when any command fails
@@ -18,7 +21,15 @@ if [ -z "${FRAMEWORK_VERSION}" ]
         exit 1
 fi
 
-go mod init example.com/function
-go mod tidy
+echo "module example.com/function
+
+go 1.13
+
+require (
+        cloud.google.com/go/functions v1.0.0
+        github.com/GoogleCloudPlatform/functions-framework-go v0.0.0
+        github.com/cloudevents/sdk-go/v2 v2.6.1
+)" >> go.mod
+
 go mod edit -require=github.com/GoogleCloudPlatform/functions-framework-go@$FRAMEWORK_VERSION
 cat go.mod
