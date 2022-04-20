@@ -5,7 +5,7 @@ name: Create Release Candidate
 on:
   push:
     branches:
-      - main
+      - master
   workflow_dispatch:
 jobs:
   go113-buildpack-test:
