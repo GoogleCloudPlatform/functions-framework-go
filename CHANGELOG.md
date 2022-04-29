@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.5.3...v1.6.0) (2022-04-29)
+
+
+### Features
+
+* Add release candidate validation ([#124](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/124)) ([4f5e934](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/4f5e9341b8a7ac43d7f18ad499ad326ff585ff06))
+
 ### [1.5.3](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.5.2...v1.5.3) (2022-02-10)
 
 
