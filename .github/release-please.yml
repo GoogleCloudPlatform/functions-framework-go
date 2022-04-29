@@ -1,0 +1,3 @@
+handleGHRelease: true
+releaseType: go
+releaseLabel: "autorelease: published"

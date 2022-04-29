@@ -1,7 +1,6 @@
-# Validates Functions Framework at a specific commit and uses the
-# Release Please GitHub Action to create a PR that can be approved & merged
-# to generate a GitHub Release.
-name: Create Release Candidate
+
+# Validates Functions Framework with GCF buildpacks.
+name: Buildpack Integration Test
 on:
   push:
     branches:
@@ -30,14 +29,3 @@ jobs:
       builder-runtime: 'go116'
       # Latest uploaded tag from us.gcr.io/fn-img/us/buildpacks/go116/builder
       builder-tag: 'go116_20220320_1_16_13_RC00'
-  release-please:
-    # Release candidate PRs cannot be created unless the commit passes
-    # validation
-    needs:
-      - go113-buildpack-test
-      - go116-buildpack-test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: google-github-actions/release-please-action@v3
-        with:
-          release-type: go
