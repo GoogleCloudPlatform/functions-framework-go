@@ -32,10 +32,11 @@ import (
 )
 
 const (
-	functionStatusHeader = "X-Google-Status"
-	crashStatus          = "crash"
-	errorStatus          = "error"
-	panicMessageTmpl     = "A panic occurred during %s. Please see logs for more details."
+	functionStatusHeader     = "X-Google-Status"
+	crashStatus              = "crash"
+	errorStatus              = "error"
+	panicMessageTmpl         = "A panic occurred during %s. Please see logs for more details."
+	fnErrorMessageStderrTmpl = "Function error: %v"
 )
 
 var (
@@ -50,7 +51,7 @@ var (
 func recoverPanic(w http.ResponseWriter, panicSrc string) {
 	if r := recover(); r != nil {
 		genericMsg := fmt.Sprintf(panicMessageTmpl, panicSrc)
-		fmt.Fprintf(os.Stderr, fmt.Sprintf("%s\npanic message: %v\nstack trace: %s", genericMsg, r, debug.Stack()))
+		fmt.Fprintf(os.Stderr, "%s\npanic message: %v\nstack trace: %s", genericMsg, r, debug.Stack())
 		if w != nil {
 			writeHTTPErrorResponse(w, http.StatusInternalServerError, crashStatus, genericMsg)
 		}
@@ -189,7 +190,16 @@ func wrapCloudEventFunction(ctx context.Context, path string, fn func(context.Co
 		return nil, fmt.Errorf("failed to create protocol: %v", err)
 	}
 
-	h, err := cloudevents.NewHTTPReceiveHandler(ctx, p, fn)
+	// Always log errors returned by the function to stderr
+	logErrFn := func(ctx context.Context, ce cloudevents.Event) error {
+		err := fn(ctx, ce)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, fmtFunctionError(err))
+		}
+		return err
+	}
+
+	h, err := cloudevents.NewHTTPReceiveHandler(ctx, p, logErrFn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handler: %v", err)
 	}
@@ -247,9 +257,18 @@ func runUserFunctionWithContext(ctx context.Context, w http.ResponseWriter, r *h
 		argVal.Elem(),
 	})
 	if userFunErr[0].Interface() != nil {
-		writeHTTPErrorResponse(w, http.StatusInternalServerError, errorStatus, fmt.Sprintf("Function error: %v", userFunErr[0]))
+		writeHTTPErrorResponse(w, http.StatusInternalServerError, errorStatus, fmtFunctionError(userFunErr[0].Interface()))
 		return
 	}
+}
+
+func fmtFunctionError(err interface{}) string {
+	formatted := fmt.Sprintf(fnErrorMessageStderrTmpl, err)
+	if !strings.HasSuffix(formatted, "\n") {
+		formatted += "\n"
+	}
+
+	return formatted
 }
 
 func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg string) {

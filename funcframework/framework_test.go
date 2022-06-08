@@ -102,13 +102,14 @@ type eventData struct {
 
 func TestEventFunction(t *testing.T) {
 	var tests = []struct {
-		name      string
-		body      []byte
-		fn        interface{}
-		status    int
-		header    string
-		ceHeaders map[string]string
-		wantResp  string
+		name       string
+		body       []byte
+		fn         interface{}
+		status     int
+		header     string
+		ceHeaders  map[string]string
+		wantResp   string
+		wantStderr string
 	}{
 		{
 			name: "valid function",
@@ -140,8 +141,10 @@ func TestEventFunction(t *testing.T) {
 			fn: func(c context.Context, s customStruct) error {
 				return fmt.Errorf("TestEventFunction(erroring function): this error should fire")
 			},
-			status: http.StatusInternalServerError,
-			header: "error",
+			status:     http.StatusInternalServerError,
+			header:     "error",
+			wantResp:   fmt.Sprintf(fnErrorMessageStderrTmpl, "TestEventFunction(erroring function): this error should fire"),
+			wantStderr: "TestEventFunction(erroring function): this error should fire",
 		},
 		{
 			name: "panicking function",
@@ -278,47 +281,71 @@ func TestEventFunction(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		h, err := wrapEventFunction("/", tc.fn)
-		if err != nil {
-			t.Fatalf("registerEventFunction(): %v", err)
-		}
-
-		srv := httptest.NewServer(h)
-		defer srv.Close()
-
-		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.body))
-		if err != nil {
-			t.Fatalf("error creating HTTP request for test: %v", err)
-		}
-		req.Header.Set("Content-Type", "application/json")
-		for k, v := range tc.ceHeaders {
-			req.Header.Set(k, v)
-		}
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			t.Errorf("client.Do(%s): %v", tc.name, err)
-			continue
-		}
-
-		if tc.wantResp != "" {
-			gotBody, err := ioutil.ReadAll(resp.Body)
+		t.Run(tc.name, func(t *testing.T) {
+			h, err := wrapEventFunction("/", tc.fn)
 			if err != nil {
-				t.Fatalf("unable to read got request body: %v", err)
+				t.Fatalf("registerEventFunction(): %v", err)
 			}
-			if strings.TrimSpace(string(gotBody)) != tc.wantResp {
-				t.Errorf("TestCloudEventFunction(%s): response body = %q, want %q on error status code %d.", tc.name, string(gotBody), tc.wantResp, tc.status)
-			}
-		}
 
-		if resp.StatusCode != tc.status {
-			t.Errorf("TestEventFunction(%s): response status = %v, want %v", tc.name, resp.StatusCode, tc.status)
-			continue
-		}
-		if resp.Header.Get(functionStatusHeader) != tc.header {
-			t.Errorf("TestEventFunction(%s): response header = %s, want %s", tc.name, resp.Header.Get(functionStatusHeader), tc.header)
-			continue
-		}
+			// Capture stderr for the duration of the test case. This includes
+			// the stderr of the HTTP test server.
+			origStderrPipe := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+			t.Cleanup(func() { os.Stderr = origStderrPipe })
+
+			srv := httptest.NewServer(h)
+			t.Cleanup(srv.Close)
+
+			req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.body))
+			if err != nil {
+				t.Fatalf("error creating HTTP request for test: %v", err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			for k, v := range tc.ceHeaders {
+				req.Header.Set(k, v)
+			}
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatalf("client.Do(%s): %v", tc.name, err)
+			}
+
+			if err := w.Close(); err != nil {
+				t.Fatalf("failed to close stderr write pipe: %v", err)
+			}
+
+			stderr, err := ioutil.ReadAll(r)
+			if err != nil {
+				t.Errorf("failed to read stderr read pipe: %v", err)
+			}
+
+			if err := r.Close(); err != nil {
+				t.Fatalf("failed to close stderr read pipe: %v", err)
+			}
+
+			if tc.wantStderr != "" && !strings.Contains(string(stderr), tc.wantStderr) {
+				t.Errorf("stderr mismatch, got: %q, must contain: %q", string(stderr), tc.wantStderr)
+			}
+
+			if tc.wantResp != "" {
+				gotBody, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					t.Fatalf("unable to read got request body: %v", err)
+				}
+				if strings.TrimSpace(string(gotBody)) != tc.wantResp {
+					t.Errorf("TestEventFunction(%s): response body = %q, want %q on error status code %d.", tc.name, string(gotBody), tc.wantResp, tc.status)
+				}
+			}
+
+			if resp.StatusCode != tc.status {
+				t.Errorf("TestEventFunction(%s): response status = %v, want %v", tc.name, resp.StatusCode, tc.status)
+			}
+
+			if resp.Header.Get(functionStatusHeader) != tc.header {
+				t.Errorf("TestEventFunction(%s): response header = %s, want %s", tc.name, resp.Header.Get(functionStatusHeader), tc.header)
+			}
+		})
 	}
 }
 
@@ -341,12 +368,14 @@ func TestCloudEventFunction(t *testing.T) {
 	}
 
 	var tests = []struct {
-		name      string
-		body      []byte
-		fn        func(context.Context, cloudevents.Event) error
-		status    int
-		header    string
-		ceHeaders map[string]string
+		name       string
+		body       []byte
+		fn         func(context.Context, cloudevents.Event) error
+		status     int
+		header     string
+		ceHeaders  map[string]string
+		wantResp   string
+		wantStderr string
 	}{
 		{
 			name: "binary cloudevent",
@@ -471,50 +500,85 @@ func TestCloudEventFunction(t *testing.T) {
 				"Content-Type": "application/cloudevents+json",
 			},
 		},
+		{
+			name: "error returns 500",
+			body: cloudeventsJSON,
+			fn: func(ctx context.Context, e cloudevents.Event) error {
+				return fmt.Errorf("error for test")
+			},
+			status: http.StatusInternalServerError,
+			ceHeaders: map[string]string{
+				"Content-Type": "application/cloudevents+json",
+			},
+			wantStderr: "error for test",
+			wantResp:   "", // CloudEvent functions do not put the error message in the response body
+		},
 	}
 
 	for _, tc := range tests {
-		ctx := context.Background()
-		h, err := wrapCloudEventFunction(ctx, "/", tc.fn)
-		if err != nil {
-			t.Fatalf("registerCloudEventFunction(): %v", err)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			h, err := wrapCloudEventFunction(ctx, "/", tc.fn)
+			if err != nil {
+				t.Fatalf("registerCloudEventFunction(): %v", err)
+			}
 
-		srv := httptest.NewServer(h)
-		defer srv.Close()
+			// Capture stderr for the duration of the test case. This includes
+			// the stderr of the HTTP test server.
+			origStderrPipe := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+			t.Cleanup(func() { os.Stderr = origStderrPipe })
 
-		req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.body))
-		if err != nil {
-			t.Fatalf("error creating HTTP request for test: %v", err)
-		}
-		for k, v := range tc.ceHeaders {
-			req.Header.Add(k, v)
-		}
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			t.Errorf("client.Do(%s): %v", tc.name, err)
-			continue
-		}
+			srv := httptest.NewServer(h)
+			t.Cleanup(srv.Close)
 
-		gotBody, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatalf("unable to read got request body: %v", err)
-		}
-		if resp.StatusCode != http.StatusOK && string(gotBody) != "" {
-			t.Errorf("TestCloudEventFunction(%s): response body = %q, want %q on error status code %d.", tc.name, gotBody, "", tc.status)
-		}
+			req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.body))
+			if err != nil {
+				t.Fatalf("error creating HTTP request for test: %v", err)
+			}
+			for k, v := range tc.ceHeaders {
+				req.Header.Add(k, v)
+			}
 
-		if resp.StatusCode != tc.status {
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatalf("client.Do(%s): %v", tc.name, err)
+			}
+
+			if err := w.Close(); err != nil {
+				t.Fatalf("failed to close stderr write pipe: %v", err)
+			}
+
+			stderr, err := ioutil.ReadAll(r)
+			if err != nil {
+				t.Errorf("failed to read stderr read pipe: %v", err)
+			}
+
+			if err := r.Close(); err != nil {
+				t.Fatalf("failed to close stderr read pipe: %v", err)
+			}
+
+			if !strings.Contains(string(stderr), tc.wantStderr) {
+				t.Errorf("stderr mismatch, got: %q, must contain: %q", string(stderr), tc.wantStderr)
+			}
+
 			gotBody, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				t.Fatalf("unable to read got request body: %v", err)
 			}
-			t.Errorf("TestCloudEventFunction(%s): response status = %v, want %v, %q.", tc.name, resp.StatusCode, tc.status, string(gotBody))
-		}
-		if resp.Header.Get(functionStatusHeader) != tc.header {
-			t.Errorf("TestCloudEventFunction(%s): response header = %q, want %q", tc.name, resp.Header.Get(functionStatusHeader), tc.header)
-		}
+			if string(gotBody) != tc.wantResp {
+				t.Errorf("TestCloudEventFunction(%s): response body = %q, want %q on error status code %d.", tc.name, gotBody, tc.wantResp, tc.status)
+			}
+
+			if resp.StatusCode != tc.status {
+				t.Errorf("TestCloudEventFunction(%s): response status = %v, want %v, %q.", tc.name, resp.StatusCode, tc.status, string(gotBody))
+			}
+			if resp.Header.Get(functionStatusHeader) != tc.header {
+				t.Errorf("TestCloudEventFunction(%s): response header = %q, want %q", tc.name, resp.Header.Get(functionStatusHeader), tc.header)
+			}
+		})
 	}
 }
 
