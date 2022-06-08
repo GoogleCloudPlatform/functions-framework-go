@@ -292,10 +292,10 @@ func TestEventFunction(t *testing.T) {
 			origStderrPipe := os.Stderr
 			r, w, _ := os.Pipe()
 			os.Stderr = w
-			t.Cleanup(func() { os.Stderr = origStderrPipe })
+			defer func() { os.Stderr = origStderrPipe }()
 
 			srv := httptest.NewServer(h)
-			t.Cleanup(srv.Close)
+			defer srv.Close()
 
 			req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.body))
 			if err != nil {
@@ -528,10 +528,10 @@ func TestCloudEventFunction(t *testing.T) {
 			origStderrPipe := os.Stderr
 			r, w, _ := os.Pipe()
 			os.Stderr = w
-			t.Cleanup(func() { os.Stderr = origStderrPipe })
+			defer func() { os.Stderr = origStderrPipe }()
 
 			srv := httptest.NewServer(h)
-			t.Cleanup(srv.Close)
+			defer srv.Close()
 
 			req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.body))
 			if err != nil {
