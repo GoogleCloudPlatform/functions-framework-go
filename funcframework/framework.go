@@ -143,7 +143,7 @@ func Start(port string) error {
 	}
 
 	if handler == nil {
-		return fmt.Errorf("no matching function found")
+		return fmt.Errorf("no matching function found with name: %s", target)
 	}
 
 	return http.ListenAndServe(":"+port, handler)
@@ -292,4 +292,8 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 	w.Header().Set(functionStatusHeader, status)
 	w.WriteHeader(statusCode)
 	fmt.Fprint(w, msg)
+}
+
+func setHandler(h http.Handler) {
+	handler = h
 }

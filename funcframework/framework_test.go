@@ -89,6 +89,7 @@ func TestHTTPFunction(t *testing.T) {
 			}
 		})
 	}
+	defer func() { handler = nil }()
 }
 
 type customStruct struct {
@@ -347,6 +348,7 @@ func TestEventFunction(t *testing.T) {
 			}
 		})
 	}
+	defer func() { handler = nil }()
 }
 
 func TestCloudEventFunction(t *testing.T) {
@@ -580,6 +582,7 @@ func TestCloudEventFunction(t *testing.T) {
 			}
 		})
 	}
+	defer func() { handler = nil }()
 }
 
 func TestDeclarativeFunctionHTTP(t *testing.T) {
@@ -607,6 +610,7 @@ func TestDeclarativeFunctionHTTP(t *testing.T) {
 	if _, err := http.Get(srv.URL); err != nil {
 		t.Fatalf("could not make HTTP GET request to function: %s", err)
 	}
+	defer func() { handler = nil }()
 }
 
 func TestDeclarativeFunctionCloudEvent(t *testing.T) {
@@ -630,17 +634,22 @@ func TestDeclarativeFunctionCloudEvent(t *testing.T) {
 	if _, err := http.Get(srv.URL); err != nil {
 		t.Fatalf("could not make HTTP GET request to function: %s", err)
 	}
+	//cleanup global var after test run
+	defer func() { handler = nil }()
 }
 
-func TestDeclarativeFunctionWithoutRegister(t *testing.T) {
+func TestFunctionsNotRegisteredError(t *testing.T) {
+
 	funcName := "HelloWorld"
 	os.Setenv("FUNCTION_TARGET", funcName)
 
-	wantErr := "no matching function found"
+	wantErr := fmt.Sprintf("no matching function found with name: %s", funcName)
 
-	if err := Start("4444"); err.Error() != wantErr {
+	if err := Start("0"); err.Error() != wantErr {
 		t.Fatalf("Expected error: %s and received error: %s", wantErr, err.Error())
 	}
+
+	defer func() { handler = nil }()
 }
 
 func dummyCloudEvent(ctx context.Context, e cloudevents.Event) error {
