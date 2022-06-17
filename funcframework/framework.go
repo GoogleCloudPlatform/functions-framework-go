@@ -141,8 +141,9 @@ func Start(port string) error {
 			handler = server
 		}
 	}
+
 	if handler == nil {
-		return fmt.Errorf("no matching function in the registry")
+		return fmt.Errorf("no matching function found")
 	}
 
 	return http.ListenAndServe(":"+port, handler)

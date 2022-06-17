@@ -632,6 +632,17 @@ func TestDeclarativeFunctionCloudEvent(t *testing.T) {
 	}
 }
 
+func TestDeclarativeFunctionWithoutRegister(t *testing.T) {
+	funcName := "HelloWorld"
+	os.Setenv("FUNCTION_TARGET", funcName)
+
+	wantErr := "no matching function found"
+
+	if err := Start("4444"); err.Error() != wantErr {
+		t.Fatalf("Expected error: %s and received error: %s", wantErr, err.Error())
+	}
+}
+
 func dummyCloudEvent(ctx context.Context, e cloudevents.Event) error {
 	return nil
 }
