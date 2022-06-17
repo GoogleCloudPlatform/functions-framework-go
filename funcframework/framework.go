@@ -293,7 +293,3 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 	w.WriteHeader(statusCode)
 	fmt.Fprint(w, msg)
 }
-
-func setHandler(h http.Handler) {
-	handler = h
-}
