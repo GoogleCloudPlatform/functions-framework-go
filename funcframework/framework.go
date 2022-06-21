@@ -143,7 +143,7 @@ func Start(port string) error {
 	}
 
 	if handler == nil {
-		return fmt.Errorf("no matching function found with name: %s", target)
+		return fmt.Errorf("no matching function found with name: %q", target)
 	}
 
 	return http.ListenAndServe(":"+port, handler)
