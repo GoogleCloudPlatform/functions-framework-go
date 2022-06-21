@@ -59,6 +59,7 @@ func TestHTTPFunction(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			h, err := wrapHTTPFunction("/", tc.fn)
+			defer func() { handler = nil }()
 			if err != nil {
 				t.Fatalf("registerHTTPFunction(): %v", err)
 			}
@@ -519,6 +520,7 @@ func TestCloudEventFunction(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			h, err := wrapCloudEventFunction(ctx, "/", tc.fn)
+			defer func() { handler = nil }()
 			if err != nil {
 				t.Fatalf("registerCloudEventFunction(): %v", err)
 			}
@@ -591,7 +593,7 @@ func TestDeclarativeFunctionHTTP(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("registerHTTPFunction(): %v", err)
 	}
-
+	defer func() { handler = nil }()
 	// register functions
 	functions.HTTP(funcName, func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
@@ -620,6 +622,8 @@ func TestDeclarativeFunctionCloudEvent(t *testing.T) {
 	// register functions
 	functions.CloudEvent(funcName, dummyCloudEvent)
 
+	//cleanup global var
+	defer func() { handler = nil }()
 	if _, ok := registry.Default().GetRegisteredFunction(funcName); !ok {
 		t.Fatalf("could not get registered function: %s", funcName)
 	}
@@ -629,6 +633,17 @@ func TestDeclarativeFunctionCloudEvent(t *testing.T) {
 
 	if _, err := http.Get(srv.URL); err != nil {
 		t.Fatalf("could not make HTTP GET request to function: %s", err)
+	}
+}
+
+func TestFunctionsNotRegisteredError(t *testing.T) {
+	funcName := "HelloWorld"
+	os.Setenv("FUNCTION_TARGET", funcName)
+
+	wantErr := fmt.Sprintf("no matching function found with name: %q", funcName)
+
+	if err := Start("0"); err.Error() != wantErr {
+		t.Fatalf("Expected error: %s and received error: %s", wantErr, err.Error())
 	}
 }
 
