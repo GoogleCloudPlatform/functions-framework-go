@@ -647,6 +647,21 @@ func TestFunctionsNotRegisteredError(t *testing.T) {
 	}
 }
 
+func TestCreateServer(t *testing.T) {
+	if err := RegisterCloudEventFunctionContext(context.Background(), "/", dummyCloudEvent); err != nil {
+		t.Fatalf("registerHTTPFunction(): %v", err)
+	}
+
+	server, err := CreateServer("0")
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err.Error())
+	}
+
+	if server == nil {
+		t.Fatalf("server is nil")
+	}
+}
+
 func dummyCloudEvent(ctx context.Context, e cloudevents.Event) error {
 	return nil
 }
