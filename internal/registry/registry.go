@@ -65,3 +65,8 @@ func (r *Registry) GetRegisteredFunction(name string) (RegisteredFunction, bool)
 	fn, ok := r.functions[name]
 	return fn, ok
 }
+
+// GetAllRegisteredFunction returns all the registered functions.
+func (r *Registry) GetAllRegisteredFunction() map[string]RegisteredFunction {
+	return r.functions
+}

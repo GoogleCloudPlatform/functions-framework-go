@@ -40,7 +40,8 @@ const (
 )
 
 var (
-	handler http.Handler
+	server            = http.DefaultServeMux
+	handlerRegistered = false
 )
 
 // recoverPanic recovers from a panic in a consistent manner. panicSrc should
@@ -86,9 +87,10 @@ func RegisterEventFunction(path string, fn interface{}) {
 
 // RegisterHTTPFunctionContext registers fn as an HTTP function.
 func RegisterHTTPFunctionContext(ctx context.Context, path string, fn func(http.ResponseWriter, *http.Request)) error {
-	server, err := wrapHTTPFunction(path, fn)
+	handler, err := wrapHTTPFunction(fn)
 	if err == nil {
-		handler = server
+		server.Handle(path, handler)
+		handlerRegistered = true
 	}
 	return err
 }
@@ -97,61 +99,95 @@ func RegisterHTTPFunctionContext(ctx context.Context, path string, fn func(http.
 // context.Context and a struct type depending on the event, and return an error. If fn has the
 // wrong signature, RegisterEventFunction returns an error.
 func RegisterEventFunctionContext(ctx context.Context, path string, fn interface{}) error {
-	server, err := wrapEventFunction(path, fn)
+	handler, err := wrapEventFunction(fn)
 	if err == nil {
-		handler = server
+		server.Handle(path, handler)
+		handlerRegistered = true
 	}
 	return err
 }
 
 // RegisterCloudEventFunctionContext registers fn as an cloudevent function.
 func RegisterCloudEventFunctionContext(ctx context.Context, path string, fn func(context.Context, cloudevents.Event) error) error {
-	server, err := wrapCloudEventFunction(ctx, path, fn)
+	handler, err := wrapCloudEventFunction(ctx, fn)
 	if err == nil {
-		handler = server
+		server.Handle(path, handler)
+		handlerRegistered = true
 	}
 	return err
 }
 
 // Start serves an HTTP server with registered function(s).
 func Start(port string) error {
-	// If FUNCTION_TARGET, try to start with that registered function
-	// If not set, assume non-declarative functions.
-	target := os.Getenv("FUNCTION_TARGET")
-
-	// Check if we have a function resource set, and if so, log progress.
-	if os.Getenv("K_SERVICE") == "" {
-		fmt.Printf("Serving function: %s\n", target)
+	if err := initServer(); err != nil {
+		return err
 	}
-
-	// Check if there's a registered function, and use if possible
-	if fn, ok := registry.Default().GetRegisteredFunction(target); ok {
-		ctx := context.Background()
-		if fn.HTTPFn != nil {
-			server, err := wrapHTTPFunction("/", fn.HTTPFn)
-			if err != nil {
-				return fmt.Errorf("unexpected error in registerHTTPFunction: %v", err)
-			}
-			handler = server
-		} else if fn.CloudEventFn != nil {
-			server, err := wrapCloudEventFunction(ctx, "/", fn.CloudEventFn)
-			if err != nil {
-				return fmt.Errorf("unexpected error in registerCloudEventFunction: %v", err)
-			}
-			handler = server
-		}
-	}
-
-	if handler == nil {
-		return fmt.Errorf("no matching function found with name: %q", target)
-	}
-
-	return http.ListenAndServe(":"+port, handler)
+	return http.ListenAndServe(":"+port, server)
 }
 
-func wrapHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request)) (http.Handler, error) {
-	h := http.NewServeMux()
-	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+func initServer() error {
+	target := os.Getenv("FUNCTION_TARGET")
+	switch {
+	// If FUNCTION_TARGET is set, only serve this target function.
+	case len(target) > 0:
+		// Start a new server because the same route "/" can only be
+		// set once on a server.
+		server = http.NewServeMux()
+		handlerRegistered = false
+		h, err := wrapFunction(target)
+		if err != nil {
+			return err
+		}
+		server.Handle("/", h)
+	// If any handlers are registered, only serve these registered handlers.
+	case handlerRegistered:
+		// No-op because the handlers are already registered with the server.
+	// Serve all the registered functions.
+	default:
+		server = http.NewServeMux()
+		handlerRegistered = false
+		fns := registry.Default().GetAllRegisteredFunction()
+		for funcName := range fns {
+			h, err := wrapFunction(funcName)
+			if err != nil {
+				fmt.Printf("Failed to serve function %s: %v", funcName, err)
+				continue
+			}
+			server.Handle("/"+funcName, h)
+		}
+	}
+	return nil
+}
+
+func wrapFunction(name string) (http.Handler, error) {
+	// Check if we have a function resource set, and if so, log progress.
+	if os.Getenv("K_SERVICE") == "" {
+		fmt.Printf("Serving function: %s\n", name)
+	}
+	// Check if there's a registered function, and use if possible.
+	fn, ok := registry.Default().GetRegisteredFunction(name)
+	if !ok {
+		return nil, fmt.Errorf("no matching function found with name: %q", name)
+	}
+	ctx := context.Background()
+	if fn.HTTPFn != nil {
+		handler, err := wrapHTTPFunction(fn.HTTPFn)
+		if err != nil {
+			return nil, fmt.Errorf("unexpected error in wrapHTTPFunction: %v", err)
+		}
+		return handler, nil
+	} else if fn.CloudEventFn != nil {
+		handler, err := wrapCloudEventFunction(ctx, fn.CloudEventFn)
+		if err != nil {
+			return nil, fmt.Errorf("unexpected error in wrapCloudEventFunction: %v", err)
+		}
+		return handler, nil
+	}
+	return nil, fmt.Errorf("missing function entry in %v", fn)
+}
+
+func wrapHTTPFunction(fn func(http.ResponseWriter, *http.Request)) (http.Handler, error) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// TODO(b/111823046): Remove following once Cloud Functions does not need flushing the logs anymore.
 		if os.Getenv("K_SERVICE") != "" {
 			// Force flush of logs after every function trigger when running on GCF.
@@ -160,17 +196,15 @@ func wrapHTTPFunction(path string, fn func(http.ResponseWriter, *http.Request)) 
 		}
 		defer recoverPanic(w, "user function execution")
 		fn(w, r)
-	})
-	return h, nil
+	}), nil
 }
 
-func wrapEventFunction(path string, fn interface{}) (http.Handler, error) {
-	h := http.NewServeMux()
+func wrapEventFunction(fn interface{}) (http.Handler, error) {
 	err := validateEventFunction(fn)
 	if err != nil {
 		return nil, err
 	}
-	h.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if os.Getenv("K_SERVICE") != "" {
 			// Force flush of logs after every function trigger when running on GCF.
 			defer fmt.Println()
@@ -184,11 +218,10 @@ func wrapEventFunction(path string, fn interface{}) (http.Handler, error) {
 		}
 
 		handleEventFunction(w, r, fn)
-	})
-	return h, nil
+	}), nil
 }
 
-func wrapCloudEventFunction(ctx context.Context, path string, fn func(context.Context, cloudevents.Event) error) (http.Handler, error) {
+func wrapCloudEventFunction(ctx context.Context, fn func(context.Context, cloudevents.Event) error) (http.Handler, error) {
 	p, err := cloudevents.NewHTTP()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create protocol: %v", err)
