@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -611,15 +610,10 @@ func TestDeclarativeFunctionHTTP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not make HTTP GET request to function: %s", err)
 	}
-<<<<<<< HEAD
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("io.ReadAll: %v", err)
-=======
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatalf("ioutil.ReadAll: %v", err)
->>>>>>> 97bd983 (Allow registering multiple functions with one server for local testing.)
 	}
 	if got := strings.TrimSpace(string(body)); got != funcResp {
 		t.Errorf("unexpected http response: got %q; want: %q", got, funcResp)
