@@ -39,11 +39,6 @@ const (
 	fnErrorMessageStderrTmpl = "Function error: %v"
 )
 
-var (
-	server            = http.DefaultServeMux
-	handlerRegistered = false
-)
-
 // recoverPanic recovers from a panic in a consistent manner. panicSrc should
 // describe what was happening when the panic was encountered, for example
 // "user function execution". w is an http.ResponseWriter to write a generic
@@ -87,89 +82,74 @@ func RegisterEventFunction(path string, fn interface{}) {
 
 // RegisterHTTPFunctionContext registers fn as an HTTP function.
 func RegisterHTTPFunctionContext(ctx context.Context, path string, fn func(http.ResponseWriter, *http.Request)) error {
-	handler, err := wrapHTTPFunction(fn)
-	if err == nil {
-		server.Handle(path, handler)
-		handlerRegistered = true
+	if err := registry.Default().RegisterHTTP(path, fn, registry.WithPath(path)); err != nil {
+		return fmt.Errorf("failed to register function at path %s: %s", path, err)
 	}
-	return err
+	return nil
 }
 
 // RegisterEventFunctionContext registers fn as an event function. The function must have two arguments, a
 // context.Context and a struct type depending on the event, and return an error. If fn has the
 // wrong signature, RegisterEventFunction returns an error.
 func RegisterEventFunctionContext(ctx context.Context, path string, fn interface{}) error {
-	handler, err := wrapEventFunction(fn)
-	if err == nil {
-		server.Handle(path, handler)
-		handlerRegistered = true
+	if err := registry.Default().RegisterEvent(path, fn, registry.WithPath(path)); err != nil {
+		return fmt.Errorf("failed to register function at path %s: %s", path, err)
 	}
-	return err
+	return nil
 }
 
 // RegisterCloudEventFunctionContext registers fn as an cloudevent function.
 func RegisterCloudEventFunctionContext(ctx context.Context, path string, fn func(context.Context, cloudevents.Event) error) error {
-	handler, err := wrapCloudEventFunction(ctx, fn)
-	if err == nil {
-		server.Handle(path, handler)
-		handlerRegistered = true
+	if err := registry.Default().RegisterCloudEvent(path, fn, registry.WithPath(path)); err != nil {
+		return fmt.Errorf("failed to register function at path %s: %s", path, err)
 	}
-	return err
+	return nil
 }
 
 // Start serves an HTTP server with registered function(s).
 func Start(port string) error {
-	if err := initServer(); err != nil {
+	server, err := initServer()
+	if err != nil {
 		return err
 	}
 	return http.ListenAndServe(":"+port, server)
 }
 
-func initServer() error {
-	target := os.Getenv("FUNCTION_TARGET")
-	switch {
-	// If FUNCTION_TARGET is set, only serve this target function.
-	case len(target) > 0:
-		// Start a new server because the same route "/" can only be
-		// set once on a server.
-		server = http.NewServeMux()
-		handlerRegistered = false
-		h, err := wrapFunction(target)
+func initServer() (*http.ServeMux, error) {
+	server := http.NewServeMux()
+
+	// If FUNCTION_TARGET is set, only serve this target function at path "/".
+	// If not set, serve all functions at the registered paths.
+	if target := os.Getenv("FUNCTION_TARGET"); len(target) > 0 {
+		fn, ok := registry.Default().GetRegisteredFunction(target)
+		if !ok {
+			return nil, fmt.Errorf("no matching function found with name: %q", target)
+		}
+		h, err := wrapFunction(fn)
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("failed to serve function %q: %v", target, err)
 		}
 		server.Handle("/", h)
-	// If any handlers are registered, only serve these registered handlers.
-	case handlerRegistered:
-		// No-op because the handlers are already registered with the server.
-	// Serve all the registered functions.
-	default:
-		server = http.NewServeMux()
-		handlerRegistered = false
-		fns := registry.Default().GetAllRegisteredFunction()
-		for funcName := range fns {
-			h, err := wrapFunction(funcName)
-			if err != nil {
-				fmt.Printf("Failed to serve function %s: %v", funcName, err)
-				continue
-			}
-			server.Handle("/"+funcName, h)
-		}
+		return server, nil
 	}
-	return nil
+
+	fns := registry.Default().GetAllFunctions()
+	for funcName, fn := range fns {
+		h, err := wrapFunction(fn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serve function %q: %v", funcName, err)
+		}
+		server.Handle(fn.Path, h)
+	}
+	return server, nil
 }
 
-func wrapFunction(name string) (http.Handler, error) {
+func wrapFunction(fn registry.RegisteredFunction) (http.Handler, error) {
 	// Check if we have a function resource set, and if so, log progress.
 	if os.Getenv("K_SERVICE") == "" {
-		fmt.Printf("Serving function: %s\n", name)
+		fmt.Printf("Serving function %s\n", fn.Name)
 	}
-	// Check if there's a registered function, and use if possible.
-	fn, ok := registry.Default().GetRegisteredFunction(name)
-	if !ok {
-		return nil, fmt.Errorf("no matching function found with name: %q", name)
-	}
-	ctx := context.Background()
+
 	if fn.HTTPFn != nil {
 		handler, err := wrapHTTPFunction(fn.HTTPFn)
 		if err != nil {
@@ -177,9 +157,15 @@ func wrapFunction(name string) (http.Handler, error) {
 		}
 		return handler, nil
 	} else if fn.CloudEventFn != nil {
-		handler, err := wrapCloudEventFunction(ctx, fn.CloudEventFn)
+		handler, err := wrapCloudEventFunction(context.Background(), fn.CloudEventFn)
 		if err != nil {
 			return nil, fmt.Errorf("unexpected error in wrapCloudEventFunction: %v", err)
+		}
+		return handler, nil
+	} else if fn.EventFn != nil {
+		handler, err := wrapEventFunction(fn.EventFn)
+		if err != nil {
+			return nil, fmt.Errorf("unexpected error in wrapEventFunction: %v", err)
 		}
 		return handler, nil
 	}
