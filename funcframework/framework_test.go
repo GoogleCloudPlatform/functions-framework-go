@@ -35,7 +35,7 @@ import (
 func TestRegisterHTTPFunctionContext(t *testing.T) {
 	tests := []struct {
 		name       string
-		path 			 string
+		path       string
 		fn         func(w http.ResponseWriter, r *http.Request)
 		wantStatus int // defaults to http.StatusOK
 		wantResp   string
@@ -109,7 +109,7 @@ type eventData struct {
 func TestRegisterEventFunctionContext(t *testing.T) {
 	var tests = []struct {
 		name       string
-		path 	     string
+		path       string
 		body       []byte
 		fn         interface{}
 		status     int
@@ -613,12 +613,19 @@ func TestDeclarativeFunctionHTTP(t *testing.T) {
 	os.Setenv("FUNCTION_TARGET", funcName)
 	defer os.Unsetenv("FUNCTION_TARGET")
 
-	// register functions
+	// Verify RegisterHTTPFunctionContext and functions.HTTP don't conflict.
+	if err := RegisterHTTPFunctionContext(context.Background(), "/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "Hello World!")
+	}); err != nil {
+		t.Fatalf("RegisterHTTPFunctionContext(): %v", err)
+	}
+	defer registry.Default().DeleteRegisteredFunction("function_at_path_\"/\"")
+	// Register functions.
 	functions.HTTP(funcName, func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, funcResp)
 	})
 	if _, ok := registry.Default().GetRegisteredFunction(funcName); !ok {
-		t.Fatalf("could not get registered function: %s", funcName)
+		t.Fatalf("could not get registered function: %q", funcName)
 	}
 
 	server, err := initServer()
@@ -630,7 +637,7 @@ func TestDeclarativeFunctionHTTP(t *testing.T) {
 
 	resp, err := http.Get(srv.URL)
 	if err != nil {
-		t.Fatalf("could not make HTTP GET request to function: %s", err)
+		t.Fatalf("could not make HTTP GET request to function: %q", err)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -647,6 +654,11 @@ func TestDeclarativeFunctionCloudEvent(t *testing.T) {
 	os.Setenv("FUNCTION_TARGET", funcName)
 	defer os.Unsetenv("FUNCTION_TARGET")
 
+	// Verify RegisterCloudEventFunctionContext and functions.CloudEvent don't conflict.
+	if err := RegisterCloudEventFunctionContext(context.Background(), "/", dummyCloudEvent); err != nil {
+		t.Fatalf("registerHTTPFunction(): %v", err)
+	}
+	defer registry.Default().DeleteRegisteredFunction("function_at_path_\"/\"")
 	// register functions
 	functions.CloudEvent(funcName, dummyCloudEvent)
 	if _, ok := registry.Default().GetRegisteredFunction(funcName); !ok {

@@ -18,7 +18,7 @@ type RegisteredFunction struct {
 	EventFn      interface{}                                    // Optional: The user's Event function
 }
 
-// Option is
+// Option is an option used when registering a function.
 type Option func(*RegisteredFunction)
 
 func WithPath(path string) Option {
@@ -48,7 +48,7 @@ func New() *Registry {
 // RegisterHTTP a HTTP function with a given name
 func (r *Registry) RegisterHTTP(name string, fn func(http.ResponseWriter, *http.Request), options ...Option) error {
 	if _, ok := r.functions[name]; ok {
-		return fmt.Errorf("function name already registered: %s", name)
+		return fmt.Errorf("function name already registered: %q", name)
 	}
 	function := RegisteredFunction{
 		Name:         name,
@@ -67,7 +67,7 @@ func (r *Registry) RegisterHTTP(name string, fn func(http.ResponseWriter, *http.
 // RegistryCloudEvent a CloudEvent function with a given name
 func (r *Registry) RegisterCloudEvent(name string, fn func(context.Context, cloudevents.Event) error, options ...Option) error {
 	if _, ok := r.functions[name]; ok {
-		return fmt.Errorf("function name already registered: %s", name)
+		return fmt.Errorf("function name already registered: %q", name)
 	}
 	function := RegisteredFunction{
 		Name:         name,
@@ -86,7 +86,7 @@ func (r *Registry) RegisterCloudEvent(name string, fn func(context.Context, clou
 // RegistryCloudEvent a Event function with a given name
 func (r *Registry) RegisterEvent(name string, fn interface{}, options ...Option) error {
 	if _, ok := r.functions[name]; ok {
-		return fmt.Errorf("function name already registered: %s", name)
+		return fmt.Errorf("function name already registered: %q", name)
 	}
 	function := RegisteredFunction{
 		Name:         name,
@@ -111,4 +111,9 @@ func (r *Registry) GetRegisteredFunction(name string) (RegisteredFunction, bool)
 // GetAllFunctions returns all the registered functions.
 func (r *Registry) GetAllFunctions() map[string]RegisteredFunction {
 	return r.functions
+}
+
+// DeleteRegisteredFunction deletes a registered function.
+func (r *Registry) DeleteRegisteredFunction(name string) {
+	delete(r.functions, name)
 }

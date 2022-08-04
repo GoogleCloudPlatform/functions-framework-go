@@ -82,28 +82,22 @@ func RegisterEventFunction(path string, fn interface{}) {
 
 // RegisterHTTPFunctionContext registers fn as an HTTP function.
 func RegisterHTTPFunctionContext(ctx context.Context, path string, fn func(http.ResponseWriter, *http.Request)) error {
-	if err := registry.Default().RegisterHTTP(path, fn, registry.WithPath(path)); err != nil {
-		return fmt.Errorf("failed to register function at path %s: %s", path, err)
-	}
-	return nil
+	funcName := fmt.Sprintf("function_at_path_%q", path)
+	return registry.Default().RegisterHTTP(funcName, fn, registry.WithPath(path))
 }
 
 // RegisterEventFunctionContext registers fn as an event function. The function must have two arguments, a
 // context.Context and a struct type depending on the event, and return an error. If fn has the
 // wrong signature, RegisterEventFunction returns an error.
 func RegisterEventFunctionContext(ctx context.Context, path string, fn interface{}) error {
-	if err := registry.Default().RegisterEvent(path, fn, registry.WithPath(path)); err != nil {
-		return fmt.Errorf("failed to register function at path %s: %s", path, err)
-	}
-	return nil
+	funcName := fmt.Sprintf("function_at_path_%q", path)
+	return registry.Default().RegisterEvent(funcName, fn, registry.WithPath(path))
 }
 
 // RegisterCloudEventFunctionContext registers fn as an cloudevent function.
 func RegisterCloudEventFunctionContext(ctx context.Context, path string, fn func(context.Context, cloudevents.Event) error) error {
-	if err := registry.Default().RegisterCloudEvent(path, fn, registry.WithPath(path)); err != nil {
-		return fmt.Errorf("failed to register function at path %s: %s", path, err)
-	}
-	return nil
+	funcName := fmt.Sprintf("function_at_path_%q", path)
+	return registry.Default().RegisterCloudEvent(funcName, fn, registry.WithPath(path))
 }
 
 // Start serves an HTTP server with registered function(s).
