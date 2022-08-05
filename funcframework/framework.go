@@ -168,8 +168,6 @@ func wrapFunction(fn registry.RegisteredFunction) (http.Handler, error) {
 
 func wrapHTTPFunction(fn func(http.ResponseWriter, *http.Request)) (http.Handler, error) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// TODO(b/111823046): Remove following once Cloud Functions does not need flushing the logs anymore.
-
 		defer recoverPanic(w, "user function execution")
 		fn(w, r)
 	}), nil
