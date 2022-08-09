@@ -8,7 +8,31 @@ on:
       - master
   workflow_dispatch:
 jobs:
+  # Download the Go conformance client binary in it's own Github runner so that the version of Go used doesn't matter
+  download-conformance-client:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.resolve-latest-client.outputs.version }}
+    steps:
+    - name: Resolve latest client version
+      id: resolve-latest-client
+      uses: GoogleCloudPlatform/functions-framework-conformance/.github/actions/client/resolve-latest@master
+    # Check if it's already in the cache
+    - name: Cache client
+      id: check-for-cached-client
+      uses: actions/cache@v3
+      with:
+        path: ~/go/bin/client
+        key: ${{ steps.resolve-latest-client.outputs.version }}
+    - name: Install and cache client
+      if: ${{ steps.check-for-cached-client.outputs.cache-hit != 'true' }}
+      uses: GoogleCloudPlatform/functions-framework-conformance/.github/actions/client/install@master
+      with:
+        client-path: ~/client
+        client-key: ${{ steps.resolve-latest-client.outputs.version }}
   build:
+    needs:
+    - download-conformance-client
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -22,73 +46,51 @@ jobs:
         go-version: '${{ matrix.go-version }}'
     - name: Pre-fetch go dependencies and build
       run: 'go build ./...'
-    - name: Pre-install conformance test client
-      run: 'go get github.com/GoogleCloudPlatform/functions-framework-conformance/client@v1.3.1 && go install github.com/GoogleCloudPlatform/functions-framework-conformance/client'
+    - name: Fetch conformance client
+      uses: actions/cache@v3
+      with:
+        path: ~/go/bin/client
+        key: ${{ needs.download-conformance-client.outputs.cache-key }}
     - name: Run HTTP conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.3.1
-      with:
-        version: 'v1.3.1'
-        functionType: 'http'
-        useBuildpacks: false
-        cmd: "'go run testdata/conformance/cmd/http/main.go'"
-        startDelay: 5
+      run: |
+        client \
+            -type=http \
+            -buildpacks=false \
+            -start-delay=5 \
+            -cmd="go run testdata/conformance/cmd/http/main.go"
     - name: Run event conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.3.1
-      with:
-        version: 'v1.3.1'
-        functionType: 'legacyevent'
-        validateMapping: true
-        useBuildpacks: false
-        cmd: "'go run testdata/conformance/cmd/legacyevent/main.go'"
-        startDelay: 5
+      run: |
+        client \
+          -type=legacyevent \
+          -buildpacks=false \
+          -start-delay=5 \
+          -cmd="go run testdata/conformance/cmd/legacyevent/main.go"
     - name: Run CloudEvent conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.3.1
-      with:
-        version: 'v1.3.1'
-        functionType: 'cloudevent'
-        validateMapping: true
-        useBuildpacks: false
-        cmd: "'go run testdata/conformance/cmd/cloudevent/main.go'"
-        startDelay: 5
+      run: |
+          client \
+            -type=cloudevent \
+            -buildpacks=false \
+            -start-delay=5 \
+            -cmd="go run testdata/conformance/cmd/cloudevent/main.go"
     - name: Run HTTP conformance tests using declarative API
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.3.1
-      env:
-        FUNCTION_TARGET: 'declarativeHTTP'
-      with:
-        version: 'v1.3.1'
-        functionType: 'http'
-        useBuildpacks: false
-        cmd: "'go run testdata/conformance/cmd/declarative/main.go'"
-        startDelay: 5
+      run: |
+          FUNCTION_TARGET=declarativeHTTP client \
+            -type=http \
+            -buildpacks=false \
+            -start-delay=5 \
+            -cmd="go run testdata/conformance/cmd/declarative/main.go"
     - name: Run CloudEvent conformance tests using declarative API
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.3.1
-      env:
-        FUNCTION_TARGET: 'declarativeCloudEvent'
-      with:
-        version: 'v1.3.1'
-        functionType: 'cloudevent'
-        useBuildpacks: false
-        cmd: "'go run testdata/conformance/cmd/declarative/main.go'"
-        startDelay: 5
+      run: |
+          FUNCTION_TARGET=declarativeCloudEvent client \
+            -type=cloudevent \
+            -buildpacks=false \
+            -start-delay=5 \
+            -cmd="go run testdata/conformance/cmd/declarative/main.go"
     - name: Run HTTP concurrency conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.3.1
-      env:
-        FUNCTION_TARGET: 'concurrentHTTP'
-      with:
-        version: 'v1.3.1'
-        functionType: 'http'
-        validateConcurrency: true
-        useBuildpacks: false
-        cmd: "'go run testdata/conformance/cmd/declarative/main.go'"
-        startDelay: 5
-    - name: Run CloudEvent concurrency conformance tests
-      uses: GoogleCloudPlatform/functions-framework-conformance/action@v1.3.1
-      env:
-        FUNCTION_TARGET: 'concurrentCloudEvent'
-      with:
-        version: 'v1.3.1'
-        functionType: 'cloudevent'
-        validateConcurrency: true
-        useBuildpacks: false
-        cmd: "'go run testdata/conformance/cmd/declarative/main.go'"
-        startDelay: 5
+      run: |
+          FUNCTION_TARGET=concurrentHTTP client \
+            -type=http \
+            -buildpacks=false \
+            -start-delay=5 \
+            -cmd="go run testdata/conformance/cmd/declarative/main.go" \
+            -validate-concurrency=true
