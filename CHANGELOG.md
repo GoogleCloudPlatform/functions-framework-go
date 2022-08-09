@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.6.0](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.5.3...v1.6.0) (2022-08-05)
+
+
+### Features
+
+* Add release candidate validation ([#124](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/124)) ([4f5e934](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/4f5e9341b8a7ac43d7f18ad499ad326ff585ff06))
+
+
+### Bug Fixes
+
+* adding a check for null http handler before starting the server ([#138](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/138)) ([5d5bf7a](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/5d5bf7a741528b4a82cbe9c67f48425fe19be444))
+* Allow registering multiple functions with one server for local testing. ([#143](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/143)) ([3cab285](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/3cab285f11b6cafced19dd42756dca821a89dda7))
+* log CloudEvent function errors to stderr ([#132](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/132)) ([ac973b4](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/ac973b4343f4814abe811d65c0c08e4c0aa4c59e))
+* remove obsolete blank prints ([#144](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/144)) ([5c7091f](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/5c7091ff59ebcfd724cdd3c90f4b97c318696040))
+
 ### [1.5.3](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.5.2...v1.5.3) (2022-02-10)
 
 
