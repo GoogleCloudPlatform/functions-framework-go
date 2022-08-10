@@ -65,9 +65,9 @@ func TestRegisterHTTPFunctionContext(t *testing.T) {
 				t.Fatalf("RegisterHTTPFunctionContext(): %v", err)
 			}
 
-			server, err := initServer()
+			server, err := NewServeMux()
 			if err != nil {
-				t.Fatalf("initServer(): %v", err)
+				t.Fatalf("NewServeMux(): %v", err)
 			}
 			srv := httptest.NewServer(server)
 			defer srv.Close()
@@ -307,9 +307,9 @@ func TestRegisterEventFunctionContext(t *testing.T) {
 			os.Stderr = w
 			defer func() { os.Stderr = origStderrPipe }()
 
-			server, err := initServer()
+			server, err := NewServeMux()
 			if err != nil {
-				t.Fatalf("initServer(): %v", err)
+				t.Fatalf("NewServeMux(): %v", err)
 			}
 			srv := httptest.NewServer(server)
 			defer srv.Close()
@@ -551,9 +551,9 @@ func TestRegisterCloudEventFunctionContext(t *testing.T) {
 			os.Stderr = w
 			defer func() { os.Stderr = origStderrPipe }()
 
-			server, err := initServer()
+			server, err := NewServeMux()
 			if err != nil {
-				t.Fatalf("initServer(): %v", err)
+				t.Fatalf("NewServeMux(): %v", err)
 			}
 			srv := httptest.NewServer(server)
 			defer srv.Close()
@@ -628,9 +628,9 @@ func TestDeclarativeFunctionHTTP(t *testing.T) {
 		t.Fatalf("could not get registered function: %q", funcName)
 	}
 
-	server, err := initServer()
+	server, err := NewServeMux()
 	if err != nil {
-		t.Fatalf("initServer(): %v", err)
+		t.Fatalf("NewServeMux(): %v", err)
 	}
 	srv := httptest.NewServer(server)
 	defer srv.Close()
@@ -665,9 +665,9 @@ func TestDeclarativeFunctionCloudEvent(t *testing.T) {
 		t.Fatalf("could not get registered function: %s", funcName)
 	}
 
-	server, err := initServer()
+	server, err := NewServeMux()
 	if err != nil {
-		t.Fatalf("initServer(): %v", err)
+		t.Fatalf("NewServeMux(): %v", err)
 	}
 	srv := httptest.NewServer(server)
 	defer srv.Close()
@@ -723,9 +723,9 @@ func TestServeMultipleFunctions(t *testing.T) {
 		}
 	}
 
-	server, err := initServer()
+	server, err := NewServeMux()
 	if err != nil {
-		t.Fatalf("initServer(): %v", err)
+		t.Fatalf("NewServeMux(): %v", err)
 	}
 	srv := httptest.NewServer(server)
 	defer srv.Close()
