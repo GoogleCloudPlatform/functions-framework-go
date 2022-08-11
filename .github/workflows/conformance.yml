@@ -16,7 +16,7 @@ jobs:
     steps:
     - name: Resolve latest client version
       id: resolve-latest-client
-      uses: GoogleCloudPlatform/functions-framework-conformance/.github/actions/client/resolve-latest@master
+      uses: GoogleCloudPlatform/functions-framework-conformance/.github/actions/client/resolve-latest@v1.7.0
     # Check if it's already in the cache
     - name: Cache client
       id: check-for-cached-client
@@ -26,7 +26,7 @@ jobs:
         key: ${{ steps.resolve-latest-client.outputs.version }}
     - name: Install and cache client
       if: ${{ steps.check-for-cached-client.outputs.cache-hit != 'true' }}
-      uses: GoogleCloudPlatform/functions-framework-conformance/.github/actions/client/install@master
+      uses: GoogleCloudPlatform/functions-framework-conformance/.github/actions/client/install@v1.7.0
       with:
         client-path: ~/client
         client-key: ${{ steps.resolve-latest-client.outputs.version }}
