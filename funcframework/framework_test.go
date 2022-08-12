@@ -32,15 +32,17 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestHTTPFunction(t *testing.T) {
+func TestRegisterHTTPFunctionContext(t *testing.T) {
 	tests := []struct {
 		name       string
+		path       string
 		fn         func(w http.ResponseWriter, r *http.Request)
 		wantStatus int // defaults to http.StatusOK
 		wantResp   string
 	}{
 		{
 			name: "helloworld",
+			path: "/TestRegisterHTTPFunctionContext_helloworld",
 			fn: func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, "Hello World!")
 			},
@@ -48,6 +50,7 @@ func TestHTTPFunction(t *testing.T) {
 		},
 		{
 			name: "panic in function",
+			path: "/TestRegisterHTTPFunctionContext_panic",
 			fn: func(w http.ResponseWriter, r *http.Request) {
 				panic("intentional panic for test")
 			},
@@ -58,16 +61,18 @@ func TestHTTPFunction(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			h, err := wrapHTTPFunction("/", tc.fn)
-			defer func() { handler = nil }()
-			if err != nil {
-				t.Fatalf("registerHTTPFunction(): %v", err)
+			if err := RegisterHTTPFunctionContext(context.Background(), tc.path, tc.fn); err != nil {
+				t.Fatalf("RegisterHTTPFunctionContext(): %v", err)
 			}
 
-			srv := httptest.NewServer(h)
+			server, err := initServer()
+			if err != nil {
+				t.Fatalf("initServer(): %v", err)
+			}
+			srv := httptest.NewServer(server)
 			defer srv.Close()
 
-			resp, err := http.Get(srv.URL)
+			resp, err := http.Get(srv.URL + tc.path)
 			if err != nil {
 				t.Fatalf("http.Get: %v", err)
 			}
@@ -76,7 +81,7 @@ func TestHTTPFunction(t *testing.T) {
 				tc.wantStatus = http.StatusOK
 			}
 			if resp.StatusCode != tc.wantStatus {
-				t.Errorf("TestHTTPFunction status code: got %d, want: %d", resp.StatusCode, tc.wantStatus)
+				t.Errorf("unexpected status code: got %d, want: %d", resp.StatusCode, tc.wantStatus)
 			}
 
 			defer resp.Body.Close()
@@ -101,9 +106,10 @@ type eventData struct {
 	Data string `json:"data"`
 }
 
-func TestEventFunction(t *testing.T) {
+func TestRegisterEventFunctionContext(t *testing.T) {
 	var tests = []struct {
 		name       string
+		path       string
 		body       []byte
 		fn         interface{}
 		status     int
@@ -114,6 +120,7 @@ func TestEventFunction(t *testing.T) {
 	}{
 		{
 			name: "valid function",
+			path: "/TestRegisterEventFunctionContext_valid",
 			body: []byte(`{"id": 12345,"name": "custom"}`),
 			fn: func(c context.Context, s customStruct) error {
 				if s.ID != 12345 {
@@ -129,6 +136,7 @@ func TestEventFunction(t *testing.T) {
 		},
 		{
 			name: "incorrect type",
+			path: "/TestRegisterEventFunctionContext_incorrect",
 			body: []byte(`{"id": 12345,"name": 123}`),
 			fn: func(c context.Context, s customStruct) error {
 				return nil
@@ -138,6 +146,7 @@ func TestEventFunction(t *testing.T) {
 		},
 		{
 			name: "erroring function",
+			path: "/TestRegisterEventFunctionContext_erroring",
 			body: []byte(`{"id": 12345,"name": "custom"}`),
 			fn: func(c context.Context, s customStruct) error {
 				return fmt.Errorf("TestEventFunction(erroring function): this error should fire")
@@ -149,6 +158,7 @@ func TestEventFunction(t *testing.T) {
 		},
 		{
 			name: "panicking function",
+			path: "/TestRegisterEventFunctionContext_panicking",
 			body: []byte(`{"id": 12345,"name": "custom"}`),
 			fn: func(c context.Context, s customStruct) error {
 				panic("intential panic for test")
@@ -159,6 +169,7 @@ func TestEventFunction(t *testing.T) {
 		},
 		{
 			name: "pubsub event",
+			path: "/TestRegisterEventFunctionContext_pubsub1",
 			body: []byte(`{
 				"context": {
 					"eventId": "1234567",
@@ -187,6 +198,7 @@ func TestEventFunction(t *testing.T) {
 		},
 		{
 			name: "pubsub legacy event",
+			path: "/TestRegisterEventFunctionContext_pubsub2",
 			body: []byte(`{
 				"eventId": "1234567",
 				"timestamp": "2019-11-04T23:01:10.112Z",
@@ -213,6 +225,7 @@ func TestEventFunction(t *testing.T) {
 		},
 		{
 			name: "cloudevent",
+			path: "/TestRegisterEventFunctionContext_cloudevent",
 			body: []byte(`{
 				"data": {
 				  "bucket": "some-bucket",
@@ -283,9 +296,8 @@ func TestEventFunction(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			h, err := wrapEventFunction("/", tc.fn)
-			if err != nil {
-				t.Fatalf("registerEventFunction(): %v", err)
+			if err := RegisterEventFunctionContext(context.Background(), tc.path, tc.fn); err != nil {
+				t.Fatalf("RegisterEventFunctionContext(): %v", err)
 			}
 
 			// Capture stderr for the duration of the test case. This includes
@@ -295,10 +307,14 @@ func TestEventFunction(t *testing.T) {
 			os.Stderr = w
 			defer func() { os.Stderr = origStderrPipe }()
 
-			srv := httptest.NewServer(h)
+			server, err := initServer()
+			if err != nil {
+				t.Fatalf("initServer(): %v", err)
+			}
+			srv := httptest.NewServer(server)
 			defer srv.Close()
 
-			req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.body))
+			req, err := http.NewRequest("POST", srv.URL+tc.path, bytes.NewBuffer(tc.body))
 			if err != nil {
 				t.Fatalf("error creating HTTP request for test: %v", err)
 			}
@@ -350,7 +366,7 @@ func TestEventFunction(t *testing.T) {
 	}
 }
 
-func TestCloudEventFunction(t *testing.T) {
+func TestRegisterCloudEventFunctionContext(t *testing.T) {
 	cloudeventsJSON := []byte(`{
 		"specversion" : "1.0",
 		"type" : "com.github.pull.create",
@@ -370,6 +386,7 @@ func TestCloudEventFunction(t *testing.T) {
 
 	var tests = []struct {
 		name       string
+		path       string
 		body       []byte
 		fn         func(context.Context, cloudevents.Event) error
 		status     int
@@ -380,6 +397,7 @@ func TestCloudEventFunction(t *testing.T) {
 	}{
 		{
 			name: "binary cloudevent",
+			path: "/TestRegisterCloudEventFunctionContext_binary",
 			body: []byte("<much wow=\"xml\"/>"),
 			fn: func(ctx context.Context, e cloudevents.Event) error {
 				if e.String() != testCE.String() {
@@ -402,6 +420,7 @@ func TestCloudEventFunction(t *testing.T) {
 		},
 		{
 			name: "structured cloudevent",
+			path: "/TestRegisterCloudEventFunctionContext_structured",
 			body: cloudeventsJSON,
 			fn: func(ctx context.Context, e cloudevents.Event) error {
 				if e.String() != testCE.String() {
@@ -417,6 +436,7 @@ func TestCloudEventFunction(t *testing.T) {
 		},
 		{
 			name: "background event",
+			path: "/TestRegisterCloudEventFunctionContext_background",
 			body: []byte(`{
 				"context": {
 				   "eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc",
@@ -492,6 +512,7 @@ func TestCloudEventFunction(t *testing.T) {
 		},
 		{
 			name: "panic returns 500",
+			path: "/TestRegisterCloudEventFunctionContext_panic",
 			body: cloudeventsJSON,
 			fn: func(ctx context.Context, e cloudevents.Event) error {
 				panic("intentional panic for test")
@@ -503,6 +524,7 @@ func TestCloudEventFunction(t *testing.T) {
 		},
 		{
 			name: "error returns 500",
+			path: "/TestRegisterCloudEventFunctionContext_error",
 			body: cloudeventsJSON,
 			fn: func(ctx context.Context, e cloudevents.Event) error {
 				return fmt.Errorf("error for test")
@@ -518,11 +540,8 @@ func TestCloudEventFunction(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
-			h, err := wrapCloudEventFunction(ctx, "/", tc.fn)
-			defer func() { handler = nil }()
-			if err != nil {
-				t.Fatalf("registerCloudEventFunction(): %v", err)
+			if err := RegisterCloudEventFunctionContext(context.Background(), tc.path, tc.fn); err != nil {
+				t.Fatalf("RegisterCloudEventFunctionContext(): %v", err)
 			}
 
 			// Capture stderr for the duration of the test case. This includes
@@ -532,10 +551,14 @@ func TestCloudEventFunction(t *testing.T) {
 			os.Stderr = w
 			defer func() { os.Stderr = origStderrPipe }()
 
-			srv := httptest.NewServer(h)
+			server, err := initServer()
+			if err != nil {
+				t.Fatalf("initServer(): %v", err)
+			}
+			srv := httptest.NewServer(server)
 			defer srv.Close()
 
-			req, err := http.NewRequest("POST", srv.URL, bytes.NewBuffer(tc.body))
+			req, err := http.NewRequest("POST", srv.URL+tc.path, bytes.NewBuffer(tc.body))
 			if err != nil {
 				t.Fatalf("error creating HTTP request for test: %v", err)
 			}
@@ -586,49 +609,67 @@ func TestCloudEventFunction(t *testing.T) {
 
 func TestDeclarativeFunctionHTTP(t *testing.T) {
 	funcName := "httpfunc"
+	funcResp := "Hello World!"
 	os.Setenv("FUNCTION_TARGET", funcName)
+	defer os.Unsetenv("FUNCTION_TARGET")
 
+	// Verify RegisterHTTPFunctionContext and functions.HTTP don't conflict.
 	if err := RegisterHTTPFunctionContext(context.Background(), "/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello World!")
 	}); err != nil {
-		t.Fatalf("registerHTTPFunction(): %v", err)
+		t.Fatalf("RegisterHTTPFunctionContext(): %v", err)
 	}
-	defer func() { handler = nil }()
-	// register functions
+	defer registry.Default().DeleteRegisteredFunction("function_at_path_\"/\"")
+	// Register functions.
 	functions.HTTP(funcName, func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Hello World!")
+		fmt.Fprint(w, funcResp)
 	})
-
 	if _, ok := registry.Default().GetRegisteredFunction(funcName); !ok {
-		t.Fatalf("could not get registered function: %s", funcName)
+		t.Fatalf("could not get registered function: %q", funcName)
 	}
 
-	srv := httptest.NewServer(handler)
+	server, err := initServer()
+	if err != nil {
+		t.Fatalf("initServer(): %v", err)
+	}
+	srv := httptest.NewServer(server)
 	defer srv.Close()
 
-	if _, err := http.Get(srv.URL); err != nil {
-		t.Fatalf("could not make HTTP GET request to function: %s", err)
+	resp, err := http.Get(srv.URL)
+	if err != nil {
+		t.Fatalf("could not make HTTP GET request to function: %q", err)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("ioutil.ReadAll: %v", err)
+	}
+	if got := strings.TrimSpace(string(body)); got != funcResp {
+		t.Errorf("unexpected http response: got %q; want: %q", got, funcResp)
 	}
 }
 
 func TestDeclarativeFunctionCloudEvent(t *testing.T) {
 	funcName := "cloudeventfunc"
 	os.Setenv("FUNCTION_TARGET", funcName)
+	defer os.Unsetenv("FUNCTION_TARGET")
 
+	// Verify RegisterCloudEventFunctionContext and functions.CloudEvent don't conflict.
 	if err := RegisterCloudEventFunctionContext(context.Background(), "/", dummyCloudEvent); err != nil {
 		t.Fatalf("registerHTTPFunction(): %v", err)
 	}
-
+	defer registry.Default().DeleteRegisteredFunction("function_at_path_\"/\"")
 	// register functions
 	functions.CloudEvent(funcName, dummyCloudEvent)
-
-	//cleanup global var
-	defer func() { handler = nil }()
 	if _, ok := registry.Default().GetRegisteredFunction(funcName); !ok {
 		t.Fatalf("could not get registered function: %s", funcName)
 	}
 
-	srv := httptest.NewServer(handler)
+	server, err := initServer()
+	if err != nil {
+		t.Fatalf("initServer(): %v", err)
+	}
+	srv := httptest.NewServer(server)
 	defer srv.Close()
 
 	if _, err := http.Get(srv.URL); err != nil {
@@ -639,6 +680,7 @@ func TestDeclarativeFunctionCloudEvent(t *testing.T) {
 func TestFunctionsNotRegisteredError(t *testing.T) {
 	funcName := "HelloWorld"
 	os.Setenv("FUNCTION_TARGET", funcName)
+	defer os.Unsetenv("FUNCTION_TARGET")
 
 	wantErr := fmt.Sprintf("no matching function found with name: %q", funcName)
 
@@ -649,4 +691,56 @@ func TestFunctionsNotRegisteredError(t *testing.T) {
 
 func dummyCloudEvent(ctx context.Context, e cloudevents.Event) error {
 	return nil
+}
+
+func TestServeMultipleFunctions(t *testing.T) {
+	fns := []struct {
+		name     string
+		fn       func(w http.ResponseWriter, r *http.Request)
+		wantResp string
+	}{
+		{
+			name: "fn1",
+			fn: func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, "Hello Foo!")
+			},
+			wantResp: "Hello Foo!",
+		},
+		{
+			name: "fn2",
+			fn: func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, "Hello Bar!")
+			},
+			wantResp: "Hello Bar!",
+		},
+	}
+
+	// Register functions.
+	for _, f := range fns {
+		functions.HTTP(f.name, f.fn)
+		if _, ok := registry.Default().GetRegisteredFunction(f.name); !ok {
+			t.Fatalf("could not get registered function: %s", f.name)
+		}
+	}
+
+	server, err := initServer()
+	if err != nil {
+		t.Fatalf("initServer(): %v", err)
+	}
+	srv := httptest.NewServer(server)
+	defer srv.Close()
+
+	for _, f := range fns {
+		resp, err := http.Get(srv.URL + "/" + f.name)
+		if err != nil {
+			t.Fatalf("could not make HTTP GET request to function: %s", err)
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("ioutil.ReadAll: %v", err)
+		}
+		if got := strings.TrimSpace(string(body)); got != f.wantResp {
+			t.Errorf("unexpected http response: got %q; want: %q", got, f.wantResp)
+		}
+	}
 }
