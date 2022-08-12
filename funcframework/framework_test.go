@@ -37,6 +37,7 @@ func TestRegisterHTTPFunctionContext(t *testing.T) {
 		name       string
 		path       string
 		fn         func(w http.ResponseWriter, r *http.Request)
+		target     string
 		wantStatus int // defaults to http.StatusOK
 		wantResp   string
 	}{
@@ -46,6 +47,15 @@ func TestRegisterHTTPFunctionContext(t *testing.T) {
 			fn: func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, "Hello World!")
 			},
+			wantResp: "Hello World!",
+		},
+		{
+			name: "FUNCTION_TARGET defined",
+			path: "/TestRegisterHTTPFunctionContext_target",
+			fn: func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, "Hello World!")
+			},
+			target:   "helloworld",
 			wantResp: "Hello World!",
 		},
 		{
@@ -61,6 +71,11 @@ func TestRegisterHTTPFunctionContext(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			if len(tc.target) > 0 {
+				os.Setenv("FUNCTION_TARGET", tc.target)
+				defer os.Unsetenv("FUNCTION_TARGET")
+			}
+
 			if err := RegisterHTTPFunctionContext(context.Background(), tc.path, tc.fn); err != nil {
 				t.Fatalf("RegisterHTTPFunctionContext(): %v", err)
 			}
@@ -112,6 +127,7 @@ func TestRegisterEventFunctionContext(t *testing.T) {
 		path       string
 		body       []byte
 		fn         interface{}
+		target     string
 		status     int
 		header     string
 		ceHeaders  map[string]string
@@ -131,6 +147,23 @@ func TestRegisterEventFunctionContext(t *testing.T) {
 				}
 				return nil
 			},
+			status: http.StatusOK,
+			header: "",
+		},
+		{
+			name: "FUNCTION_TARGET defined",
+			path: "/TestRegisterEventFunctionContext_target",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(c context.Context, s customStruct) error {
+				if s.ID != 12345 {
+					return fmt.Errorf("expected id=12345, got %d", s.ID)
+				}
+				if s.Name != "custom" {
+					return fmt.Errorf("TestEventFunction(valid function): got name=%s, want name=\"custom\"", s.Name)
+				}
+				return nil
+			},
+			target: "target",
 			status: http.StatusOK,
 			header: "",
 		},
@@ -296,6 +329,11 @@ func TestRegisterEventFunctionContext(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			if len(tc.target) > 0 {
+				os.Setenv("FUNCTION_TARGET", tc.target)
+				defer os.Unsetenv("FUNCTION_TARGET")
+			}
+
 			if err := RegisterEventFunctionContext(context.Background(), tc.path, tc.fn); err != nil {
 				t.Fatalf("RegisterEventFunctionContext(): %v", err)
 			}
@@ -389,6 +427,7 @@ func TestRegisterCloudEventFunctionContext(t *testing.T) {
 		path       string
 		body       []byte
 		fn         func(context.Context, cloudevents.Event) error
+		target 	   string
 		status     int
 		header     string
 		ceHeaders  map[string]string
@@ -428,6 +467,23 @@ func TestRegisterCloudEventFunctionContext(t *testing.T) {
 				}
 				return nil
 			},
+			status: http.StatusOK,
+			header: "",
+			ceHeaders: map[string]string{
+				"Content-Type": "application/cloudevents+json",
+			},
+		},
+		{
+			name: "FUNCTION_TARGET defined",
+			path: "/TestRegisterCloudEventFunctionContext_target",
+			body: cloudeventsJSON,
+			fn: func(ctx context.Context, e cloudevents.Event) error {
+				if e.String() != testCE.String() {
+					return fmt.Errorf("TestCloudEventFunction(structured cloudevent): got: %v, want: %v", e, testCE)
+				}
+				return nil
+			},
+			target: "target",
 			status: http.StatusOK,
 			header: "",
 			ceHeaders: map[string]string{
@@ -540,6 +596,11 @@ func TestRegisterCloudEventFunctionContext(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			if len(tc.target) > 0 {
+				os.Setenv("FUNCTION_TARGET", tc.target)
+				defer os.Unsetenv("FUNCTION_TARGET")
+			}
+			
 			if err := RegisterCloudEventFunctionContext(context.Background(), tc.path, tc.fn); err != nil {
 				t.Fatalf("RegisterCloudEventFunctionContext(): %v", err)
 			}

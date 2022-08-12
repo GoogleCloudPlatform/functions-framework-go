@@ -16,6 +16,7 @@ type RegisteredFunction struct {
 	CloudEventFn func(context.Context, cloudevents.Event) error // Optional: The user's CloudEvent function
 	HTTPFn       func(http.ResponseWriter, *http.Request)       // Optional: The user's HTTP function
 	EventFn      interface{}                                    // Optional: The user's Event function
+	legacy       bool                                           // Optional: The function is registered non-declaratively
 }
 
 // Option is an option used when registering a function.
@@ -27,9 +28,16 @@ func WithPath(path string) Option {
 	}
 }
 
+func WithLegacy() Option {
+	return func(fn *RegisteredFunction) {
+		fn.legacy = true
+	}
+}
+
 // Registry is a registry of functions.
 type Registry struct {
-	functions map[string]RegisteredFunction
+	functions    map[string]RegisteredFunction
+	lastLegacyFn RegisteredFunction // The last function that's not registered declaratively.
 }
 
 var defaultInstance = New()
@@ -61,6 +69,9 @@ func (r *Registry) RegisterHTTP(name string, fn func(http.ResponseWriter, *http.
 		o(&function)
 	}
 	r.functions[name] = function
+	if function.legacy {
+		r.lastLegacyFn = function
+	}
 	return nil
 }
 
@@ -80,6 +91,9 @@ func (r *Registry) RegisterCloudEvent(name string, fn func(context.Context, clou
 		o(&function)
 	}
 	r.functions[name] = function
+	if function.legacy {
+		r.lastLegacyFn = function
+	}
 	return nil
 }
 
@@ -99,6 +113,9 @@ func (r *Registry) RegisterEvent(name string, fn interface{}, options ...Option)
 		o(&function)
 	}
 	r.functions[name] = function
+	if function.legacy {
+		r.lastLegacyFn = function
+	}
 	return nil
 }
 
@@ -111,6 +128,15 @@ func (r *Registry) GetRegisteredFunction(name string) (RegisteredFunction, bool)
 // GetAllFunctions returns all the registered functions.
 func (r *Registry) GetAllFunctions() map[string]RegisteredFunction {
 	return r.functions
+}
+
+// GetLastLegacyFunction returns the last function that's not registered declaratively.
+func (r *Registry) GetLastLegacyFunction() (RegisteredFunction, bool) {
+	// No function is registered non-declaratively.
+	if len(r.lastLegacyFn.Name) == 0 {
+		return r.lastLegacyFn, false
+	}
+	return r.lastLegacyFn, true
 }
 
 // DeleteRegisteredFunction deletes a registered function.

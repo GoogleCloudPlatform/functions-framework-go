@@ -83,7 +83,7 @@ func RegisterEventFunction(path string, fn interface{}) {
 // RegisterHTTPFunctionContext registers fn as an HTTP function.
 func RegisterHTTPFunctionContext(ctx context.Context, path string, fn func(http.ResponseWriter, *http.Request)) error {
 	funcName := fmt.Sprintf("function_at_path_%q", path)
-	return registry.Default().RegisterHTTP(funcName, fn, registry.WithPath(path))
+	return registry.Default().RegisterHTTP(funcName, fn, registry.WithPath(path), registry.WithLegacy())
 }
 
 // RegisterEventFunctionContext registers fn as an event function. The function must have two arguments, a
@@ -91,13 +91,13 @@ func RegisterHTTPFunctionContext(ctx context.Context, path string, fn func(http.
 // wrong signature, RegisterEventFunction returns an error.
 func RegisterEventFunctionContext(ctx context.Context, path string, fn interface{}) error {
 	funcName := fmt.Sprintf("function_at_path_%q", path)
-	return registry.Default().RegisterEvent(funcName, fn, registry.WithPath(path))
+	return registry.Default().RegisterEvent(funcName, fn, registry.WithPath(path), registry.WithLegacy())
 }
 
 // RegisterCloudEventFunctionContext registers fn as an cloudevent function.
 func RegisterCloudEventFunctionContext(ctx context.Context, path string, fn func(context.Context, cloudevents.Event) error) error {
 	funcName := fmt.Sprintf("function_at_path_%q", path)
-	return registry.Default().RegisterCloudEvent(funcName, fn, registry.WithPath(path))
+	return registry.Default().RegisterCloudEvent(funcName, fn, registry.WithPath(path), registry.WithLegacy())
 }
 
 // Start serves an HTTP server with registered function(s).
@@ -115,11 +115,18 @@ func initServer() (*http.ServeMux, error) {
 	// If FUNCTION_TARGET is set, only serve this target function at path "/".
 	// If not set, serve all functions at the registered paths.
 	if target := os.Getenv("FUNCTION_TARGET"); len(target) > 0 {
+		var targetFn registry.RegisteredFunction
+
 		fn, ok := registry.Default().GetRegisteredFunction(target)
-		if !ok {
+		if ok {
+			targetFn = fn
+		} else if lastLegacyFn, ok := registry.Default().GetLastLegacyFunction(); ok {
+			targetFn = lastLegacyFn
+		} else {
 			return nil, fmt.Errorf("no matching function found with name: %q", target)
 		}
-		h, err := wrapFunction(fn)
+
+		h, err := wrapFunction(targetFn)
 		if err != nil {
 			return nil, fmt.Errorf("failed to serve function %q: %v", target, err)
 		}

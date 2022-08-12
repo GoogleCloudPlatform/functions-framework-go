@@ -24,10 +24,11 @@ import (
 
 func TestRegisterHTTP(t *testing.T) {
 	testCases := []struct {
-		name     string
-		option   Option
-		wantName string
-		wantPath string
+		name       string
+		option     Option
+		wantName   string
+		wantPath   string
+		wantLegacy bool
 	}{
 		{
 			name:     "hello",
@@ -39,6 +40,13 @@ func TestRegisterHTTP(t *testing.T) {
 			option:   WithPath("/world"),
 			wantName: "withPath",
 			wantPath: "/world",
+		},
+		{
+			name:       "withLegacy",
+			option:     WithLegacy(),
+			wantName:   "withLegacy",
+			wantPath:   "/withLegacy",
+			wantLegacy: true,
 		},
 	}
 
@@ -63,16 +71,20 @@ func TestRegisterHTTP(t *testing.T) {
 			if fn.Path != tc.wantPath {
 				t.Errorf("Expected function path to be %s, got %s", tc.wantPath, fn.Path)
 			}
+			if fn.legacy != tc.wantLegacy {
+				t.Errorf("Expected function legacy to be %v, got %v", tc.wantLegacy, fn.legacy)
+			}
 		})
 	}
 }
 
 func TestRegisterCloudEvent(t *testing.T) {
 	testCases := []struct {
-		name     string
-		option   Option
-		wantName string
-		wantPath string
+		name       string
+		option     Option
+		wantName   string
+		wantPath   string
+		wantLegacy bool
 	}{
 		{
 			name:     "hello",
@@ -85,13 +97,20 @@ func TestRegisterCloudEvent(t *testing.T) {
 			wantName: "withPath",
 			wantPath: "/world",
 		},
+		{
+			name:       "withLegacy",
+			option:     WithLegacy(),
+			wantName:   "withLegacy",
+			wantPath:   "/withLegacy",
+			wantLegacy: true,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			registry := New()
 
-			cefn := func(context.Context, cloudevents.Event) error { return nil}
+			cefn := func(context.Context, cloudevents.Event) error { return nil }
 			if tc.option != nil {
 				registry.RegisterCloudEvent(tc.name, cefn, tc.option)
 			} else {
@@ -108,16 +127,20 @@ func TestRegisterCloudEvent(t *testing.T) {
 			if fn.Path != tc.wantPath {
 				t.Errorf("Expected function path to be %s, got %s", tc.wantPath, fn.Path)
 			}
+			if fn.legacy != tc.wantLegacy {
+				t.Errorf("Expected function legacy to be %v, got %v", tc.wantLegacy, fn.legacy)
+			}
 		})
 	}
 }
 
 func TestRegisterEvent(t *testing.T) {
 	testCases := []struct {
-		name     string
-		option   Option
-		wantName string
-		wantPath string
+		name       string
+		option     Option
+		wantName   string
+		wantPath   string
+		wantLegacy bool
 	}{
 		{
 			name:     "hello",
@@ -129,6 +152,13 @@ func TestRegisterEvent(t *testing.T) {
 			option:   WithPath("/world"),
 			wantName: "withPath",
 			wantPath: "/world",
+		},
+		{
+			name:       "withLegacy",
+			option:     WithLegacy(),
+			wantName:   "withLegacy",
+			wantPath:   "/withLegacy",
+			wantLegacy: true,
 		},
 	}
 
@@ -152,6 +182,9 @@ func TestRegisterEvent(t *testing.T) {
 			}
 			if fn.Path != tc.wantPath {
 				t.Errorf("Expected function path to be %s, got %s", tc.wantPath, fn.Path)
+			}
+			if fn.legacy != tc.wantLegacy {
+				t.Errorf("Expected function legacy to be %v, got %v", tc.wantLegacy, fn.legacy)
 			}
 		})
 	}
