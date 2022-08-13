@@ -14,7 +14,7 @@ import (
 // HTTP registers an HTTP function that becomes the function handler served
 // at "/" when environment variable `FUNCTION_TARGET=name`
 func HTTP(name string, fn func(http.ResponseWriter, *http.Request)) {
-	if err := registry.Default().RegisterHTTP(name, fn); err != nil {
+	if err := registry.Default().RegisterHTTP(fn, registry.WithName(name)); err != nil {
 		log.Fatalf("failure to register function: %s", err)
 	}
 }
@@ -22,7 +22,7 @@ func HTTP(name string, fn func(http.ResponseWriter, *http.Request)) {
 // CloudEvent registers a CloudEvent function that becomes the function handler
 // served at "/" when environment variable `FUNCTION_TARGET=name`
 func CloudEvent(name string, fn func(context.Context, cloudevents.Event) error) {
-	if err := registry.Default().RegisterCloudEvent(name, fn); err != nil {
+	if err := registry.Default().RegisterCloudEvent(fn, registry.WithName(name)); err != nil {
 		log.Fatalf("failure to register function: %s", err)
 	}
 }

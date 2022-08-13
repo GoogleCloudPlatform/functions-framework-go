@@ -82,22 +82,19 @@ func RegisterEventFunction(path string, fn interface{}) {
 
 // RegisterHTTPFunctionContext registers fn as an HTTP function.
 func RegisterHTTPFunctionContext(ctx context.Context, path string, fn func(http.ResponseWriter, *http.Request)) error {
-	funcName := fmt.Sprintf("function_at_path_%q", path)
-	return registry.Default().RegisterHTTP(funcName, fn, registry.WithPath(path), registry.WithLegacy())
+	return registry.Default().RegisterHTTP(fn, registry.WithPath(path))
 }
 
 // RegisterEventFunctionContext registers fn as an event function. The function must have two arguments, a
 // context.Context and a struct type depending on the event, and return an error. If fn has the
 // wrong signature, RegisterEventFunction returns an error.
 func RegisterEventFunctionContext(ctx context.Context, path string, fn interface{}) error {
-	funcName := fmt.Sprintf("function_at_path_%q", path)
-	return registry.Default().RegisterEvent(funcName, fn, registry.WithPath(path), registry.WithLegacy())
+	return registry.Default().RegisterEvent(fn, registry.WithPath(path))
 }
 
 // RegisterCloudEventFunctionContext registers fn as an cloudevent function.
 func RegisterCloudEventFunctionContext(ctx context.Context, path string, fn func(context.Context, cloudevents.Event) error) error {
-	funcName := fmt.Sprintf("function_at_path_%q", path)
-	return registry.Default().RegisterCloudEvent(funcName, fn, registry.WithPath(path), registry.WithLegacy())
+	return registry.Default().RegisterCloudEvent(fn, registry.WithPath(path))
 }
 
 // Start serves an HTTP server with registered function(s).
@@ -115,13 +112,13 @@ func initServer() (*http.ServeMux, error) {
 	// If FUNCTION_TARGET is set, only serve this target function at path "/".
 	// If not set, serve all functions at the registered paths.
 	if target := os.Getenv("FUNCTION_TARGET"); len(target) > 0 {
-		var targetFn registry.RegisteredFunction
+		var targetFn *registry.RegisteredFunction
 
 		fn, ok := registry.Default().GetRegisteredFunction(target)
 		if ok {
 			targetFn = fn
-		} else if lastLegacyFn, ok := registry.Default().GetLastLegacyFunction(); ok {
-			targetFn = lastLegacyFn
+		} else if lastFnWithoutName := registry.Default().GetLastFunctionWithoutName(); lastFnWithoutName != nil {
+			targetFn = lastFnWithoutName
 		} else {
 			return nil, fmt.Errorf("no matching function found with name: %q", target)
 		}
@@ -145,7 +142,7 @@ func initServer() (*http.ServeMux, error) {
 	return server, nil
 }
 
-func wrapFunction(fn registry.RegisteredFunction) (http.Handler, error) {
+func wrapFunction(fn *registry.RegisteredFunction) (http.Handler, error) {
 	// Check if we have a function resource set, and if so, log progress.
 	if os.Getenv("FUNCTION_TARGET") == "" {
 		fmt.Printf("Serving function: %q", fn.Name)

@@ -16,7 +16,6 @@ type RegisteredFunction struct {
 	CloudEventFn func(context.Context, cloudevents.Event) error // Optional: The user's CloudEvent function
 	HTTPFn       func(http.ResponseWriter, *http.Request)       // Optional: The user's HTTP function
 	EventFn      interface{}                                    // Optional: The user's Event function
-	legacy       bool                                           // Optional: The function is registered non-declaratively
 }
 
 // Option is an option used when registering a function.
@@ -28,16 +27,16 @@ func WithPath(path string) Option {
 	}
 }
 
-func WithLegacy() Option {
+func WithName(name string) Option {
 	return func(fn *RegisteredFunction) {
-		fn.legacy = true
+		fn.Name = name
 	}
 }
 
 // Registry is a registry of functions.
 type Registry struct {
-	functions    map[string]RegisteredFunction
-	lastLegacyFn RegisteredFunction // The last function that's not registered declaratively.
+	functions             map[string]*RegisteredFunction
+	functionsWithoutNames []*RegisteredFunction // The functions that are not registered declaratively.
 }
 
 var defaultInstance = New()
@@ -49,18 +48,17 @@ func Default() *Registry {
 
 func New() *Registry {
 	return &Registry{
-		functions: map[string]RegisteredFunction{},
+		functions: map[string]*RegisteredFunction{},
 	}
 }
 
-// RegisterHTTP a HTTP function with a given name
-func (r *Registry) RegisterHTTP(name string, fn func(http.ResponseWriter, *http.Request), options ...Option) error {
-	if _, ok := r.functions[name]; ok {
-		return fmt.Errorf("function name already registered: %q", name)
-	}
+func Reset() {
+	defaultInstance = New()
+}
+
+// RegisterHTTP registes a HTTP function.
+func (r *Registry) RegisterHTTP(fn func(http.ResponseWriter, *http.Request), options ...Option) error {
 	function := RegisteredFunction{
-		Name:         name,
-		Path:         "/" + name,
 		CloudEventFn: nil,
 		HTTPFn:       fn,
 		EventFn:      nil,
@@ -68,21 +66,22 @@ func (r *Registry) RegisterHTTP(name string, fn func(http.ResponseWriter, *http.
 	for _, o := range options {
 		o(&function)
 	}
-	r.functions[name] = function
-	if function.legacy {
-		r.lastLegacyFn = function
+	if function.Name == "" {
+		// The function is not registered declaratively.
+		r.functionsWithoutNames = append(r.functionsWithoutNames, &function)
+		return nil
 	}
+	if _, ok := r.functions[function.Name]; ok {
+		return fmt.Errorf("function name already registered: %q", function.Name)
+	}
+	function.Path = "/" + function.Name
+	r.functions[function.Name] = &function
 	return nil
 }
 
-// RegistryCloudEvent a CloudEvent function with a given name
-func (r *Registry) RegisterCloudEvent(name string, fn func(context.Context, cloudevents.Event) error, options ...Option) error {
-	if _, ok := r.functions[name]; ok {
-		return fmt.Errorf("function name already registered: %q", name)
-	}
+// RegistryCloudEvent registers a CloudEvent function.
+func (r *Registry) RegisterCloudEvent(fn func(context.Context, cloudevents.Event) error, options ...Option) error {
 	function := RegisteredFunction{
-		Name:         name,
-		Path:         "/" + name,
 		CloudEventFn: fn,
 		HTTPFn:       nil,
 		EventFn:      nil,
@@ -90,21 +89,22 @@ func (r *Registry) RegisterCloudEvent(name string, fn func(context.Context, clou
 	for _, o := range options {
 		o(&function)
 	}
-	r.functions[name] = function
-	if function.legacy {
-		r.lastLegacyFn = function
+	if function.Name == "" {
+		// The function is not registered declaratively.
+		r.functionsWithoutNames = append(r.functionsWithoutNames, &function)
+		return nil
 	}
+	if _, ok := r.functions[function.Name]; ok {
+		return fmt.Errorf("function name already registered: %q", function.Name)
+	}
+	function.Path = "/" + function.Name
+	r.functions[function.Name] = &function
 	return nil
 }
 
-// RegistryCloudEvent a Event function with a given name
-func (r *Registry) RegisterEvent(name string, fn interface{}, options ...Option) error {
-	if _, ok := r.functions[name]; ok {
-		return fmt.Errorf("function name already registered: %q", name)
-	}
+// RegistryCloudEvent registers a Event function.
+func (r *Registry) RegisterEvent(fn interface{}, options ...Option) error {
 	function := RegisteredFunction{
-		Name:         name,
-		Path:         "/" + name,
 		CloudEventFn: nil,
 		HTTPFn:       nil,
 		EventFn:      fn,
@@ -112,31 +112,41 @@ func (r *Registry) RegisterEvent(name string, fn interface{}, options ...Option)
 	for _, o := range options {
 		o(&function)
 	}
-	r.functions[name] = function
-	if function.legacy {
-		r.lastLegacyFn = function
+	if function.Name == "" {
+		// The function is not registered declaratively.
+		r.functionsWithoutNames = append(r.functionsWithoutNames, &function)
+		return nil
 	}
+	if _, ok := r.functions[function.Name]; ok {
+		return fmt.Errorf("function name already registered: %q", function.Name)
+	}
+	function.Path = "/" + function.Name
+	r.functions[function.Name] = &function
 	return nil
 }
 
 // GetRegisteredFunction a registered function by name
-func (r *Registry) GetRegisteredFunction(name string) (RegisteredFunction, bool) {
+func (r *Registry) GetRegisteredFunction(name string) (*RegisteredFunction, bool) {
 	fn, ok := r.functions[name]
 	return fn, ok
 }
 
 // GetAllFunctions returns all the registered functions.
-func (r *Registry) GetAllFunctions() map[string]RegisteredFunction {
-	return r.functions
+func (r *Registry) GetAllFunctions() []*RegisteredFunction {
+	all := r.functionsWithoutNames
+	for _, fn := range r.functions {
+		all = append(all, fn)
+	}
+	return all
 }
 
-// GetLastLegacyFunction returns the last function that's not registered declaratively.
-func (r *Registry) GetLastLegacyFunction() (RegisteredFunction, bool) {
-	// No function is registered non-declaratively.
-	if len(r.lastLegacyFn.Name) == 0 {
-		return r.lastLegacyFn, false
+// GetLastFunctionWithoutName returns the last function that's not registered declaratively.
+func (r *Registry) GetLastFunctionWithoutName() *RegisteredFunction {
+	count := len(r.functionsWithoutNames)
+	if count == 0 {
+		return nil
 	}
-	return r.lastLegacyFn, true
+	return r.functionsWithoutNames[count-1]
 }
 
 // DeleteRegisteredFunction deletes a registered function.

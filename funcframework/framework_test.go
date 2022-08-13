@@ -71,9 +71,9 @@ func TestRegisterHTTPFunctionContext(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			defer cleanup()
 			if len(tc.target) > 0 {
 				os.Setenv("FUNCTION_TARGET", tc.target)
-				defer os.Unsetenv("FUNCTION_TARGET")
 			}
 
 			if err := RegisterHTTPFunctionContext(context.Background(), tc.path, tc.fn); err != nil {
@@ -329,9 +329,9 @@ func TestRegisterEventFunctionContext(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			defer cleanup()
 			if len(tc.target) > 0 {
 				os.Setenv("FUNCTION_TARGET", tc.target)
-				defer os.Unsetenv("FUNCTION_TARGET")
 			}
 
 			if err := RegisterEventFunctionContext(context.Background(), tc.path, tc.fn); err != nil {
@@ -427,7 +427,7 @@ func TestRegisterCloudEventFunctionContext(t *testing.T) {
 		path       string
 		body       []byte
 		fn         func(context.Context, cloudevents.Event) error
-		target 	   string
+		target     string
 		status     int
 		header     string
 		ceHeaders  map[string]string
@@ -596,11 +596,11 @@ func TestRegisterCloudEventFunctionContext(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			defer cleanup()
 			if len(tc.target) > 0 {
 				os.Setenv("FUNCTION_TARGET", tc.target)
-				defer os.Unsetenv("FUNCTION_TARGET")
 			}
-			
+
 			if err := RegisterCloudEventFunctionContext(context.Background(), tc.path, tc.fn); err != nil {
 				t.Fatalf("RegisterCloudEventFunctionContext(): %v", err)
 			}
@@ -669,10 +669,10 @@ func TestRegisterCloudEventFunctionContext(t *testing.T) {
 }
 
 func TestDeclarativeFunctionHTTP(t *testing.T) {
+	defer cleanup()
 	funcName := "httpfunc"
 	funcResp := "Hello World!"
 	os.Setenv("FUNCTION_TARGET", funcName)
-	defer os.Unsetenv("FUNCTION_TARGET")
 
 	// Verify RegisterHTTPFunctionContext and functions.HTTP don't conflict.
 	if err := RegisterHTTPFunctionContext(context.Background(), "/", func(w http.ResponseWriter, r *http.Request) {
@@ -711,9 +711,9 @@ func TestDeclarativeFunctionHTTP(t *testing.T) {
 }
 
 func TestDeclarativeFunctionCloudEvent(t *testing.T) {
+	defer cleanup()
 	funcName := "cloudeventfunc"
 	os.Setenv("FUNCTION_TARGET", funcName)
-	defer os.Unsetenv("FUNCTION_TARGET")
 
 	// Verify RegisterCloudEventFunctionContext and functions.CloudEvent don't conflict.
 	if err := RegisterCloudEventFunctionContext(context.Background(), "/", dummyCloudEvent); err != nil {
@@ -739,12 +739,11 @@ func TestDeclarativeFunctionCloudEvent(t *testing.T) {
 }
 
 func TestFunctionsNotRegisteredError(t *testing.T) {
+	defer cleanup()
 	funcName := "HelloWorld"
 	os.Setenv("FUNCTION_TARGET", funcName)
-	defer os.Unsetenv("FUNCTION_TARGET")
 
 	wantErr := fmt.Sprintf("no matching function found with name: %q", funcName)
-
 	if err := Start("0"); err.Error() != wantErr {
 		t.Fatalf("Expected error: %s and received error: %s", wantErr, err.Error())
 	}
@@ -755,6 +754,7 @@ func dummyCloudEvent(ctx context.Context, e cloudevents.Event) error {
 }
 
 func TestServeMultipleFunctions(t *testing.T) {
+	defer cleanup()
 	fns := []struct {
 		name     string
 		fn       func(w http.ResponseWriter, r *http.Request)
@@ -804,4 +804,9 @@ func TestServeMultipleFunctions(t *testing.T) {
 			t.Errorf("unexpected http response: got %q; want: %q", got, f.wantResp)
 		}
 	}
+}
+
+func cleanup() {
+	os.Unsetenv("FUNCTION_TARGET")
+	registry.Reset()
 }
