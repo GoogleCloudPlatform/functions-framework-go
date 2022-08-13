@@ -132,10 +132,10 @@ func initServer() (*http.ServeMux, error) {
 	}
 
 	fns := registry.Default().GetAllFunctions()
-	for funcName, fn := range fns {
+	for _, fn := range fns {
 		h, err := wrapFunction(fn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to serve function %q: %v", funcName, err)
+			return nil, fmt.Errorf("failed to serve function at path %q: %v", fn.Path, err)
 		}
 		server.Handle(fn.Path, h)
 	}
