@@ -680,7 +680,6 @@ func TestDeclarativeFunctionHTTP(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("RegisterHTTPFunctionContext(): %v", err)
 	}
-	defer registry.Default().DeleteRegisteredFunction("function_at_path_\"/\"")
 	// Register functions.
 	functions.HTTP(funcName, func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, funcResp)
@@ -719,7 +718,6 @@ func TestDeclarativeFunctionCloudEvent(t *testing.T) {
 	if err := RegisterCloudEventFunctionContext(context.Background(), "/", dummyCloudEvent); err != nil {
 		t.Fatalf("registerHTTPFunction(): %v", err)
 	}
-	defer registry.Default().DeleteRegisteredFunction("function_at_path_\"/\"")
 	// register functions
 	functions.CloudEvent(funcName, dummyCloudEvent)
 	if _, ok := registry.Default().GetRegisteredFunction(funcName); !ok {

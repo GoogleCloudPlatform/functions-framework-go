@@ -58,70 +58,38 @@ func Reset() {
 
 // RegisterHTTP registes a HTTP function.
 func (r *Registry) RegisterHTTP(fn func(http.ResponseWriter, *http.Request), options ...Option) error {
-	function := RegisteredFunction{
-		CloudEventFn: nil,
-		HTTPFn:       fn,
-		EventFn:      nil,
-	}
-	for _, o := range options {
-		o(&function)
-	}
-	if function.Name == "" {
-		// The function is not registered declaratively.
-		r.functionsWithoutNames = append(r.functionsWithoutNames, &function)
-		return nil
-	}
-	if _, ok := r.functions[function.Name]; ok {
-		return fmt.Errorf("function name already registered: %q", function.Name)
-	}
-	function.Path = "/" + function.Name
-	r.functions[function.Name] = &function
-	return nil
+	return r.register(&RegisteredFunction{HTTPFn: fn}, options...)
 }
 
 // RegistryCloudEvent registers a CloudEvent function.
 func (r *Registry) RegisterCloudEvent(fn func(context.Context, cloudevents.Event) error, options ...Option) error {
-	function := RegisteredFunction{
-		CloudEventFn: fn,
-		HTTPFn:       nil,
-		EventFn:      nil,
-	}
-	for _, o := range options {
-		o(&function)
-	}
-	if function.Name == "" {
-		// The function is not registered declaratively.
-		r.functionsWithoutNames = append(r.functionsWithoutNames, &function)
-		return nil
-	}
-	if _, ok := r.functions[function.Name]; ok {
-		return fmt.Errorf("function name already registered: %q", function.Name)
-	}
-	function.Path = "/" + function.Name
-	r.functions[function.Name] = &function
-	return nil
+	return r.register(&RegisteredFunction{CloudEventFn: fn}, options...)
 }
 
 // RegistryCloudEvent registers a Event function.
 func (r *Registry) RegisterEvent(fn interface{}, options ...Option) error {
-	function := RegisteredFunction{
-		CloudEventFn: nil,
-		HTTPFn:       nil,
-		EventFn:      fn,
-	}
+	return r.register(&RegisteredFunction{EventFn: fn}, options...)
+}
+
+func (r *Registry) register(function *RegisteredFunction, options ...Option) error {
 	for _, o := range options {
-		o(&function)
+		o(function)
+	}
+	if function.Name == "" && function.Path == "" {
+		return fmt.Errorf("either the function path or the function name should be specified")
 	}
 	if function.Name == "" {
 		// The function is not registered declaratively.
-		r.functionsWithoutNames = append(r.functionsWithoutNames, &function)
+		r.functionsWithoutNames = append(r.functionsWithoutNames, function)
 		return nil
 	}
 	if _, ok := r.functions[function.Name]; ok {
 		return fmt.Errorf("function name already registered: %q", function.Name)
 	}
-	function.Path = "/" + function.Name
-	r.functions[function.Name] = &function
+	if function.Path == "" {
+		function.Path = "/" + function.Name
+	}
+	r.functions[function.Name] = function
 	return nil
 }
 
@@ -141,15 +109,13 @@ func (r *Registry) GetAllFunctions() []*RegisteredFunction {
 }
 
 // GetLastFunctionWithoutName returns the last function that's not registered declaratively.
+// As the function is registered without a name, it can not be found by setting FUNCTION_TARGET
+// when deploying. In this case, the last function that's not registered declaratively
+// will be served.
 func (r *Registry) GetLastFunctionWithoutName() *RegisteredFunction {
 	count := len(r.functionsWithoutNames)
 	if count == 0 {
 		return nil
 	}
 	return r.functionsWithoutNames[count-1]
-}
-
-// DeleteRegisteredFunction deletes a registered function.
-func (r *Registry) DeleteRegisteredFunction(name string) {
-	delete(r.functions, name)
 }

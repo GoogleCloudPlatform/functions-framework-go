@@ -22,23 +22,46 @@ import (
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
-func TestRegisterHTTP(t *testing.T) {
+func TestRegister(t *testing.T) {
 	testCases := []struct {
 		name     string
-		option   Option
+		options  []Option
 		wantName string
 		wantPath string
+		wantErr  bool
 	}{
 		{
-			name:     "hello",
-			option:   WithName("hello"),
+			name:     "withName",
+			options:  []Option{WithName("hello")},
 			wantName: "hello",
 			wantPath: "/hello",
 		},
 		{
 			name:     "withPath",
-			option:   WithPath("/world"),
+			options:  []Option{WithPath("/world")},
 			wantPath: "/world",
+		},
+		{
+			name: "consistent path",
+			options: []Option{
+				WithName("hello"),
+				WithPath("/hello"),
+			},
+			wantName: "hello",
+			wantPath: "/hello",
+		},
+		{
+			name: "path conflict",
+			options: []Option{
+				WithName("hello"),
+				WithPath("/world"),
+			},
+			wantName: "hello",
+			wantPath: "/world",
+		},
+		{
+			name:    "no option",
+			wantErr: true,
 		},
 	}
 
@@ -47,114 +70,18 @@ func TestRegisterHTTP(t *testing.T) {
 			registry := New()
 
 			httpfn := func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "Hello World!") }
-			registry.RegisterHTTP(httpfn, tc.option)
-
-			if tc.wantName != "" {
-				fn, ok := registry.GetRegisteredFunction(tc.name)
-				if !ok {
-					t.Fatalf("Expected function to be registered")
-				}
-				if fn.Name != tc.wantName {
-					t.Errorf("Expected function name to be %s, got %s", tc.wantName, fn.Name)
-				}
-				if fn.Path != tc.wantPath {
-					t.Errorf("Expected function path to be %s, got %s", tc.wantPath, fn.Path)
-				}
-			} else {
-				fn := registry.GetLastFunctionWithoutName()
-				if fn == nil {
-					t.Fatalf("Expected function to be registered")
-				}
-				if fn.Path != tc.wantPath {
-					t.Errorf("Expected function path to be %s, got %s", tc.wantPath, fn.Path)
-				}
+			gotErr := registry.register(&RegisteredFunction{HTTPFn: httpfn}, tc.options...)
+			if gotErr != nil && !tc.wantErr {
+				t.Errorf("Got unexpected error: %v", gotErr)
+			} else if gotErr == nil && tc.wantErr {
+				t.Errorf("Missing expected error")
 			}
-		})
-	}
-}
-
-func TestRegisterCloudEvent(t *testing.T) {
-	testCases := []struct {
-		name       string
-		option     Option
-		wantName   string
-		wantPath   string
-		wantLegacy bool
-	}{
-		{
-			name:     "hello",
-			option:   WithName("hello"),
-			wantName: "hello",
-			wantPath: "/hello",
-		},
-		{
-			name:     "withPath",
-			option:   WithPath("/world"),
-			wantPath: "/world",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			registry := New()
-
-			cefn := func(context.Context, cloudevents.Event) error { return nil }
-			registry.RegisterCloudEvent(cefn, tc.option)
-
-			if tc.wantName != "" {
-				fn, ok := registry.GetRegisteredFunction(tc.name)
-				if !ok {
-					t.Fatalf("Expected function to be registered")
-				}
-				if fn.Name != tc.wantName {
-					t.Errorf("Expected function name to be %s, got %s", tc.wantName, fn.Name)
-				}
-				if fn.Path != tc.wantPath {
-					t.Errorf("Expected function path to be %s, got %s", tc.wantPath, fn.Path)
-				}
-			} else {
-				fn := registry.GetLastFunctionWithoutName()
-				if fn == nil {
-					t.Fatalf("Expected function to be registered")
-				}
-				if fn.Path != tc.wantPath {
-					t.Errorf("Expected function path to be %s, got %s", tc.wantPath, fn.Path)
-				}
+			if gotErr != nil {
+				return
 			}
-		})
-	}
-}
-
-func TestRegisterEvent(t *testing.T) {
-	testCases := []struct {
-		name       string
-		option     Option
-		wantName   string
-		wantPath   string
-		wantLegacy bool
-	}{
-		{
-			name:     "hello",
-			option:   WithName("hello"),
-			wantName: "hello",
-			wantPath: "/hello",
-		},
-		{
-			name:     "withPath",
-			option:   WithPath("/world"),
-			wantPath: "/world",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			registry := New()
-
-			eventfn := func() {}
-			registry.RegisterEvent(eventfn, tc.option)
 
 			if tc.wantName != "" {
-				fn, ok := registry.GetRegisteredFunction(tc.name)
+				fn, ok := registry.GetRegisteredFunction(tc.wantName)
 				if !ok {
 					t.Fatalf("Expected function to be registered")
 				}

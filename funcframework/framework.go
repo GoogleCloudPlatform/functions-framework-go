@@ -118,6 +118,8 @@ func initServer() (*http.ServeMux, error) {
 		if ok {
 			targetFn = fn
 		} else if lastFnWithoutName := registry.Default().GetLastFunctionWithoutName(); lastFnWithoutName != nil {
+			// If no function was found with the target name, assume the last function that's not registered declaratively
+			// should be served at '/'.
 			targetFn = lastFnWithoutName
 		} else {
 			return nil, fmt.Errorf("no matching function found with name: %q", target)
