@@ -53,7 +53,8 @@ func New() *Registry {
 }
 
 func (r *Registry) Reset() {
-	r = New()
+	r.functions = map[string]*RegisteredFunction{}
+	r.functionsWithoutNames = []*RegisteredFunction{}
 }
 
 // RegisterHTTP registes a HTTP function.
