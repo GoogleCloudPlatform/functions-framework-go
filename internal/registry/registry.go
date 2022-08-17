@@ -52,8 +52,8 @@ func New() *Registry {
 	}
 }
 
-func Reset() {
-	defaultInstance = New()
+func (r *Registry) Reset() {
+	r = New()
 }
 
 // RegisterHTTP registes a HTTP function.

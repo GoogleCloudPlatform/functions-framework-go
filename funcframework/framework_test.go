@@ -806,5 +806,5 @@ func TestServeMultipleFunctions(t *testing.T) {
 
 func cleanup() {
 	os.Unsetenv("FUNCTION_TARGET")
-	registry.Reset()
+	registry.Default().Reset()
 }
