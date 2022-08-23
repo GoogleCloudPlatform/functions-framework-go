@@ -54,6 +54,3 @@ client -buildpacks=false -type=cloudevent -cmd='go run cmd/cloudevent/main.go' -
 
 print_header "HTTP CONCURRENCY TESTS"
 FUNCTION_TARGET=concurrentHTTP client -buildpacks=false -type=http -cmd='go run cmd/declarative/main.go' -start-delay 1 -validate-concurrency=true
-
-print_header "CLOUDEVENT CONCURRENCY TESTS"
-FUNCTION_TARGET=concurrentCloudEvent client -buildpacks=false -type=cloudevent -cmd='go run cmd/declarative/main.go' -start-delay 1 -validate-concurrency=true

@@ -21,12 +21,12 @@ import (
 	"os"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-	"github.com/GoogleCloudPlatform/functions-framework-go/testdata/conformance/function"
+	"github.com/GoogleCloudPlatform/functions-framework-go/testdata/conformance/nondeclarative"
 )
 
 func main() {
 	ctx := context.Background()
-	if err := funcframework.RegisterHTTPFunctionContext(ctx, "/", function.HTTP); err != nil {
+	if err := funcframework.RegisterHTTPFunctionContext(ctx, "/", nondeclarative.HTTP); err != nil {
 		log.Fatalf("Failed to register function:: %v", err)
 	}
 
