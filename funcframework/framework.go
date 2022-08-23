@@ -174,6 +174,11 @@ func wrapFunction(fn *registry.RegisteredFunction) (http.Handler, error) {
 
 func wrapHTTPFunction(fn func(http.ResponseWriter, *http.Request)) (http.Handler, error) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if os.Getenv("K_SERVICE") != "" {
+			// Force flush of logs after every function trigger when running on GCF.
+			defer fmt.Println()
+			defer fmt.Fprintln(os.Stderr)
+		}
 		defer recoverPanic(w, "user function execution")
 		fn(w, r)
 	}), nil
@@ -185,6 +190,12 @@ func wrapEventFunction(fn interface{}) (http.Handler, error) {
 		return nil, err
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if os.Getenv("K_SERVICE") != "" {
+			// Force flush of logs after every function trigger when running on GCF.
+			defer fmt.Println()
+			defer fmt.Fprintln(os.Stderr)
+		}
+
 		if shouldConvertCloudEventToBackgroundRequest(r) {
 			if err := convertCloudEventToBackgroundRequest(r); err != nil {
 				writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("error converting CloudEvent to Background Event: %v", err))
@@ -288,6 +299,13 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 		msg += "\n"
 	}
 	fmt.Fprint(os.Stderr, msg)
+
+	// Flush stdout and stderr when running on GCF. This must be done before writing
+	// the HTTP response in order for all logs to appear in GCF.
+	if os.Getenv("K_SERVICE") != "" {
+		fmt.Println()
+		fmt.Fprintln(os.Stderr)
+	}
 
 	w.Header().Set(functionStatusHeader, status)
 	w.WriteHeader(statusCode)
