@@ -174,7 +174,6 @@ func wrapFunction(fn *registry.RegisteredFunction) (http.Handler, error) {
 
 func wrapHTTPFunction(fn func(http.ResponseWriter, *http.Request)) (http.Handler, error) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// TODO(b/111823046): Remove following once Cloud Functions does not need flushing the logs anymore.
 		if os.Getenv("K_SERVICE") != "" {
 			// Force flush of logs after every function trigger when running on GCF.
 			defer fmt.Println()
@@ -302,7 +301,7 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 	fmt.Fprint(os.Stderr, msg)
 
 	// Flush stdout and stderr when running on GCF. This must be done before writing
-	// the HTTP response in order for all logs to appear in Stackdriver.
+	// the HTTP response in order for all logs to appear in GCF.
 	if os.Getenv("K_SERVICE") != "" {
 		fmt.Println()
 		fmt.Fprintln(os.Stderr)
