@@ -21,12 +21,12 @@ import (
 	"os"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-	"github.com/GoogleCloudPlatform/functions-framework-go/testdata/conformance/function"
+	"github.com/GoogleCloudPlatform/functions-framework-go/testdata/conformance/nondeclarative"
 )
 
 func main() {
 	ctx := context.Background()
-	if err := funcframework.RegisterCloudEventFunctionContext(ctx, "/", function.CloudEvent); err != nil {
+	if err := funcframework.RegisterCloudEventFunctionContext(ctx, "/", nondeclarative.CloudEvent); err != nil {
 		log.Fatalf("Failed to register function: %v", err)
 	}
 

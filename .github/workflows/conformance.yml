@@ -28,7 +28,7 @@ jobs:
       if: ${{ steps.check-for-cached-client.outputs.cache-hit != 'true' }}
       uses: GoogleCloudPlatform/functions-framework-conformance/.github/actions/client/install@v1.7.0
       with:
-        cache-path: ~/client
+        cache-path: ~/go/bin/client
         cache-key: ${{ steps.resolve-latest-client.outputs.version }}
   build:
     needs:

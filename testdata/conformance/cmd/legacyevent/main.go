@@ -21,12 +21,12 @@ import (
 	"os"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-	"github.com/GoogleCloudPlatform/functions-framework-go/testdata/conformance/function"
+	"github.com/GoogleCloudPlatform/functions-framework-go/testdata/conformance/nondeclarative"
 )
 
 func main() {
 	ctx := context.Background()
-	if err := funcframework.RegisterEventFunctionContext(ctx, "/", function.Event); err != nil {
+	if err := funcframework.RegisterEventFunctionContext(ctx, "/", nondeclarative.Event); err != nil {
 		log.Fatalf("Failed to register function:: %v", err)
 	}
 
