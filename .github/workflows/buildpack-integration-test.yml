@@ -8,24 +8,29 @@ on:
   workflow_dispatch:
 jobs:
   go113-buildpack-test:
-    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.4.1
+    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.8.0
     with:
       http-builder-source: 'testdata/conformance/function'
       http-builder-target: 'declarativeHTTP'
       cloudevent-builder-source: 'testdata/conformance/function'
       cloudevent-builder-target: 'declarativeCloudEvent'
-      prerun: 'testdata/conformance/function/prerun.sh ${{ github.sha }}'
+      prerun: 'testdata/conformance/prerun.sh ${{ github.sha }} testdata/conformance/function'
       builder-runtime: 'go113'
-      # Latest uploaded tag from us.gcr.io/fn-img/us/buildpacks/go113/builder
-      builder-tag: 'go113_20220320_1_13_15_RC00'
   go116-buildpack-test:
-    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.4.1
+    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.8.0
     with:
       http-builder-source: 'testdata/conformance/function'
       http-builder-target: 'declarativeHTTP'
       cloudevent-builder-source: 'testdata/conformance/function'
       cloudevent-builder-target: 'declarativeCloudEvent'
-      prerun: 'testdata/conformance/function/prerun.sh ${{ github.sha }}'
+      prerun: 'testdata/conformance/prerun.sh ${{ github.sha }} testdata/conformance/function'
       builder-runtime: 'go116'
-      # Latest uploaded tag from us.gcr.io/fn-img/us/buildpacks/go116/builder
-      builder-tag: 'go116_20220320_1_16_13_RC00'
+  non-declarative-buildpack-test:
+    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.8.0
+    with:
+      http-builder-source: 'testdata/conformance/nondeclarative'
+      http-builder-target: 'HTTP'
+      cloudevent-builder-source: 'testdata/conformance/nondeclarative'
+      cloudevent-builder-target: 'CloudEvent'
+      prerun: 'testdata/conformance/prerun.sh ${{ github.sha }} testdata/conformance/nondeclarative'
+      builder-runtime: 'go116'
