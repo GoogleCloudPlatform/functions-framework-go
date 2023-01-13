@@ -85,6 +85,11 @@ func RegisterHTTPFunctionContext(ctx context.Context, path string, fn func(http.
 	return registry.Default().RegisterHTTP(fn, registry.WithPath(path))
 }
 
+// RegisterHTTPFunctionContext registers fn as an HTTP function.
+func RegisterTypedFunctionContext(ctx context.Context, path string, fn interface{}) error {
+	return registry.Default().RegisterTyped(fn, registry.WithPath(path))
+}
+
 // RegisterEventFunctionContext registers fn as an event function. The function must have two arguments, a
 // context.Context and a struct type depending on the event, and return an error. If fn has the
 // wrong signature, RegisterEventFunction returns an error.
@@ -147,7 +152,7 @@ func initServer() (*http.ServeMux, error) {
 func wrapFunction(fn *registry.RegisteredFunction) (http.Handler, error) {
 	// Check if we have a function resource set, and if so, log progress.
 	if os.Getenv("FUNCTION_TARGET") == "" {
-		fmt.Printf("Serving function: %q", fn.Name)
+		fmt.Printf("Serving function@@@@@: %q", fn.Name)
 	}
 
 	if fn.HTTPFn != nil {
@@ -166,6 +171,12 @@ func wrapFunction(fn *registry.RegisteredFunction) (http.Handler, error) {
 		handler, err := wrapEventFunction(fn.EventFn)
 		if err != nil {
 			return nil, fmt.Errorf("unexpected error in wrapEventFunction: %v", err)
+		}
+		return handler, nil
+	} else if fn.TypedFn != nil {
+		handler, err := wrapTypedFunction(fn.TypedFn)
+		if err != nil {
+			return nil, fmt.Errorf("unexpected error in wrapTypedFunction: %v", err)
 		}
 		return handler, nil
 	}
@@ -203,6 +214,42 @@ func wrapEventFunction(fn interface{}) (http.Handler, error) {
 		}
 
 		handleEventFunction(w, r, fn)
+	}), nil
+}
+
+func wrapTypedFunction(fn interface{}) (http.Handler, error) {
+	ft := reflect.TypeOf(fn)
+	if ft.NumIn() != 1 {
+		fmt.Printf("expected function to have one parameters, found %d", ft.NumIn())
+	}
+	inV := ft.In(0)
+	in_Kind := inV.Kind()
+	fmt.Printf("Input type is %s and %s and %s", in_Kind, inV.Name(), inV.PkgPath())
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := readHTTPRequestBody(r)
+		if err != nil {
+			writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("%v", err))
+			return
+		}
+		argVal := reflect.New(reflect.TypeOf(fn).In(0))
+
+		if err := json.Unmarshal(body, argVal.Interface()); err != nil {
+			writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error: %s, while converting input type data: %s", err.Error(), string(body)))
+			return
+		}
+
+		defer recoverPanic(w, "user function execution")
+		funcReturn := reflect.ValueOf(fn).Call([]reflect.Value{
+			argVal.Elem(),
+		})
+
+		fmt.Printf("User error %s", funcReturn)
+		if len(funcReturn) == 1 {
+			before := funcReturn[0].Interface()
+			returnVal, _ := json.Marshal(before)
+
+			fmt.Fprintf(w, string(returnVal))
+		}
 	}), nil
 }
 
@@ -278,6 +325,7 @@ func runUserFunctionWithContext(ctx context.Context, w http.ResponseWriter, r *h
 		reflect.ValueOf(ctx),
 		argVal.Elem(),
 	})
+	fmt.Println(userFunErr)
 	if userFunErr[0].Interface() != nil {
 		writeHTTPErrorResponse(w, http.StatusInternalServerError, errorStatus, fmtFunctionError(userFunErr[0].Interface()))
 		return

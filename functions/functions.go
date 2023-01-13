@@ -26,3 +26,9 @@ func CloudEvent(name string, fn func(context.Context, cloudevents.Event) error) 
 		log.Fatalf("failure to register function: %s", err)
 	}
 }
+
+func Typed(name string, fn interface{}) {
+	if err := registry.Default().RegisterTyped(fn, registry.WithName(name)); err != nil {
+		log.Fatalf("failure to register function: %s", err)
+	}
+}
