@@ -156,6 +156,18 @@ func TestRegisterTypedFunction(t *testing.T) {
 			header:     "crash",
 			wantStderr: "while converting input type data",
 		},
+		{
+			name: "function error",
+			path: "/TestRegisterTypedFunction_func_error",
+			body: []byte(`{"id": 0,"name": "john"}`),
+			fn: func(s customStruct) customStruct {
+				s.ID = 10 / s.ID
+				return s
+			},
+			status:     http.StatusInternalServerError,
+			header:     "crash",
+			wantStderr: "A panic occurred during user function execution",
+		},
 	}
 
 	for _, tc := range tests {
