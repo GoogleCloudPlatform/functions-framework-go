@@ -235,13 +235,10 @@ func wrapTypedFunction(fn interface{}) (http.Handler, error) {
 			argVal.Elem(),
 		})
 
-		fmt.Printf("User error %s", funcReturn)
-
 		if len(funcReturn) >= 1 {
 			var errorVar error
 			errorType := reflect.TypeOf(&errorVar).Elem()
 			firstVal := funcReturn[0].Interface()
-			fmt.Println(reflect.TypeOf(firstVal))
 			if !reflect.TypeOf(firstVal).AssignableTo(errorType) {
 				returnVal, _ := json.Marshal(firstVal)
 				fmt.Fprintf(w, string(returnVal))

@@ -117,6 +117,11 @@ type customStruct struct {
 	Name string `json:"name"`
 }
 
+type testStruct struct {
+	Age  int
+	Name string
+}
+
 type eventData struct {
 	Data string `json:"data"`
 }
@@ -142,7 +147,17 @@ func TestRegisterTypedFunction(t *testing.T) {
 			},
 			status:   http.StatusOK,
 			header:   "",
-			wantResp: "{\"id\":12345,\"name\":\"custom\"}",
+			wantResp: `{"id":12345,"name":"custom"}`,
+		},
+		{
+			name: "TestTypedFunction_untagged_struct",
+			body: []byte(`{"Age": 30,"Name": "john"}`),
+			fn: func(s testStruct) testStruct {
+				return s
+			},
+			status:   http.StatusOK,
+			header:   "",
+			wantResp: `{"Age":30,"Name":"john"}`,
 		},
 		{
 			name: "TestTypedFunction_two_returns",
@@ -152,7 +167,7 @@ func TestRegisterTypedFunction(t *testing.T) {
 			},
 			status:   http.StatusOK,
 			header:   "",
-			wantResp: "{\"id\":12345,\"name\":\"custom\"}",
+			wantResp: `{"id":12345,"name":"custom"}`,
 		},
 		{
 			name: "TestTypedFunction_return_string",
