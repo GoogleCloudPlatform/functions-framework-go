@@ -126,7 +126,7 @@ func TestRegisterTypedFunction(t *testing.T) {
 		name       string
 		path       string
 		body       []byte
-		fn         func(customStruct) customStruct
+		fn         interface{}
 		target     string
 		status     int
 		header     string
@@ -135,8 +135,7 @@ func TestRegisterTypedFunction(t *testing.T) {
 		wantStderr string
 	}{
 		{
-			name: "typed function",
-			path: "/TestRegisterTypedFunction_typed",
+			name: "TestTypedFunction_typed",
 			body: []byte(`{"id": 12345,"name": "custom"}`),
 			fn: func(s customStruct) customStruct {
 				return s
@@ -146,8 +145,38 @@ func TestRegisterTypedFunction(t *testing.T) {
 			wantResp: "{\"id\":12345,\"name\":\"custom\"}",
 		},
 		{
-			name: "input data error",
-			path: "/TestRegisterTypedFunction_data_error",
+			name: "TestTypedFunction_two_returns",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(s customStruct) (customStruct, error) {
+				return s, nil
+			},
+			status:   http.StatusOK,
+			header:   "",
+			wantResp: "{\"id\":12345,\"name\":\"custom\"}",
+		},
+		{
+			name: "TestTypedFunction_return_string",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(s customStruct) int {
+				return s.ID
+			},
+			status:   http.StatusOK,
+			header:   "",
+			wantResp: "12345",
+		},
+		{
+			name: "TestTypedFunction_return_error",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(s customStruct) error {
+				return fmt.Errorf("Some error message")
+			},
+			status:     http.StatusInternalServerError,
+			header:     "error",
+			wantResp:   fmt.Sprintf(fnErrorMessageStderrTmpl, "Some error message"),
+			wantStderr: "Some error message",
+		},
+		{
+			name: "TestTypedFunction_data_error",
 			body: []byte(`{"id": 12345,"name": 5}`),
 			fn: func(s customStruct) customStruct {
 				return s
@@ -157,8 +186,7 @@ func TestRegisterTypedFunction(t *testing.T) {
 			wantStderr: "while converting input type data",
 		},
 		{
-			name: "function error",
-			path: "/TestRegisterTypedFunction_func_error",
+			name: "TestTypedFunction_func_error",
 			body: []byte(`{"id": 0,"name": "john"}`),
 			fn: func(s customStruct) customStruct {
 				s.ID = 10 / s.ID
@@ -176,9 +204,9 @@ func TestRegisterTypedFunction(t *testing.T) {
 			if len(tc.target) > 0 {
 				os.Setenv("FUNCTION_TARGET", tc.target)
 			}
-
-			if err := RegisterTypedFunctionContext(context.Background(), tc.path, tc.fn); err != nil {
-				t.Fatalf("RegisterTypedFunctionContext(): %v", err)
+			functions.Typed(tc.name, tc.fn)
+			if _, ok := registry.Default().GetRegisteredFunction(tc.name); !ok {
+				t.Fatalf("could not get registered function: %s", tc.name)
 			}
 
 			origStderrPipe := os.Stderr
@@ -193,7 +221,7 @@ func TestRegisterTypedFunction(t *testing.T) {
 			srv := httptest.NewServer(server)
 			defer srv.Close()
 
-			req, err := http.NewRequest("POST", srv.URL+tc.path, bytes.NewBuffer(tc.body))
+			req, err := http.NewRequest("POST", srv.URL+"/"+tc.name, bytes.NewBuffer(tc.body))
 			if err != nil {
 				t.Fatalf("error creating HTTP request for test: %v", err)
 			}
@@ -233,7 +261,7 @@ func TestRegisterTypedFunction(t *testing.T) {
 				t.Fatalf("unable to read got request body: %v", err)
 			}
 
-			if tc.wantResp != "" && string(gotBody) != tc.wantResp {
+			if tc.wantResp != "" && strings.TrimSpace(string(gotBody)) != tc.wantResp {
 				t.Errorf("TestTypedFunction(%s): response body = %q, want %q on error status code %d.", tc.name, gotBody, tc.wantResp, tc.status)
 			}
 

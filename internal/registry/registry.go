@@ -68,7 +68,7 @@ func (r *Registry) RegisterCloudEvent(fn func(context.Context, cloudevents.Event
 	return r.register(&RegisteredFunction{CloudEventFn: fn}, options...)
 }
 
-// RegisterCloudEvent registers a Event function.
+// RegisterEvent registers an Event function.
 func (r *Registry) RegisterEvent(fn interface{}, options ...Option) error {
 	return r.register(&RegisteredFunction{EventFn: fn}, options...)
 }

@@ -85,11 +85,6 @@ func RegisterHTTPFunctionContext(ctx context.Context, path string, fn func(http.
 	return registry.Default().RegisterHTTP(fn, registry.WithPath(path))
 }
 
-// RegisterHTTPFunctionContext registers fn as an HTTP function.
-func RegisterTypedFunctionContext(ctx context.Context, path string, fn interface{}) error {
-	return registry.Default().RegisterTyped(fn, registry.WithPath(path))
-}
-
 // RegisterEventFunctionContext registers fn as an event function. The function must have two arguments, a
 // context.Context and a struct type depending on the event, and return an error. If fn has the
 // wrong signature, RegisterEventFunction returns an error.
@@ -152,7 +147,7 @@ func initServer() (*http.ServeMux, error) {
 func wrapFunction(fn *registry.RegisteredFunction) (http.Handler, error) {
 	// Check if we have a function resource set, and if so, log progress.
 	if os.Getenv("FUNCTION_TARGET") == "" {
-		fmt.Printf("Serving function@@@@@: %q", fn.Name)
+		fmt.Printf("Serving function: %q", fn.Name)
 	}
 
 	if fn.HTTPFn != nil {
@@ -218,13 +213,10 @@ func wrapEventFunction(fn interface{}) (http.Handler, error) {
 }
 
 func wrapTypedFunction(fn interface{}) (http.Handler, error) {
-	ft := reflect.TypeOf(fn)
-	if ft.NumIn() != 1 {
-		fmt.Printf("expected function to have one parameters, found %d", ft.NumIn())
+	err := validateTypedFunction(fn)
+	if err != nil {
+		return nil, err
 	}
-	inV := ft.In(0)
-	in_Kind := inV.Kind()
-	fmt.Printf("Input type is %s and %s and %s", in_Kind, inV.Name(), inV.PkgPath())
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := readHTTPRequestBody(r)
 		if err != nil {
@@ -244,13 +236,41 @@ func wrapTypedFunction(fn interface{}) (http.Handler, error) {
 		})
 
 		fmt.Printf("User error %s", funcReturn)
-		if len(funcReturn) == 1 {
-			before := funcReturn[0].Interface()
-			returnVal, _ := json.Marshal(before)
 
-			fmt.Fprintf(w, string(returnVal))
+		if len(funcReturn) >= 1 {
+			var errorVar error
+			errorType := reflect.TypeOf(&errorVar).Elem()
+			firstVal := funcReturn[0].Interface()
+			fmt.Println(reflect.TypeOf(firstVal))
+			if !reflect.TypeOf(firstVal).AssignableTo(errorType) {
+				returnVal, _ := json.Marshal(firstVal)
+				fmt.Fprintf(w, string(returnVal))
+			}
+
+			lastVal := funcReturn[len(funcReturn)-1].Interface()
+			if lastVal != nil && reflect.TypeOf(lastVal).AssignableTo(errorType) {
+				writeHTTPErrorResponse(w, http.StatusInternalServerError, errorStatus, fmtFunctionError(lastVal))
+			}
+
 		}
 	}), nil
+}
+
+func validateTypedFunction(fn interface{}) error {
+	ft := reflect.TypeOf(fn)
+	if ft.NumIn() != 1 {
+		return fmt.Errorf("expected function to have one parameters, found %d", ft.NumIn())
+	}
+	var err error
+	errorType := reflect.TypeOf(&err).Elem()
+	if ft.NumOut() > 2 {
+		return fmt.Errorf("expected function to have maximum two return values")
+	}
+	if ft.NumOut() == 2 && !ft.Out(1).AssignableTo(errorType) {
+		return fmt.Errorf("expected second return type to be of error")
+	}
+
+	return nil
 }
 
 func wrapCloudEventFunction(ctx context.Context, fn func(context.Context, cloudevents.Event) error) (http.Handler, error) {
