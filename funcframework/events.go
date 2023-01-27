@@ -126,7 +126,9 @@ func getBackgroundEvent(body []byte, path string) (*metadata.Metadata, interface
 	if possible.BackgroundEvent == nil && possible.LegacyPushSubscriptionEvent != nil {
 		topic, err := pubsub.ExtractTopicFromRequestPath(path)
 		if err != nil {
-			fmt.Printf("WARNING: %s", err)
+			replacer := strings.NewReplacer("\n", "", "\r", "")
+			escapedLog := replacer.Replace(fmt.Sprintf("WARNING: %s", err))
+			fmt.Println(escapedLog)
 		}
 		event = possible.LegacyPushSubscriptionEvent.ToBackgroundEvent(topic)
 	}
@@ -217,7 +219,7 @@ func encodeData(d interface{}) ([]byte, error) {
 // associated with the given CloudEvent service. See ceServiceToResourceRe for the regexp
 // mapping. For example,
 //
-//   "projects/_/buckets/some-bucket/objects/folder/test.txt"
+//	"projects/_/buckets/some-bucket/objects/folder/test.txt"
 //
 // would be split to create the strings "projects/_/buckets/some-bucket"
 // and "objects/folder/test.txt". This function returns the resource string, the
