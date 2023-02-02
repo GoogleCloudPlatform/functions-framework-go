@@ -142,18 +142,28 @@ func TestRegisterTypedFunction(t *testing.T) {
 		{
 			name: "TestTypedFunction_typed",
 			body: []byte(`{"id": 12345,"name": "custom"}`),
-			fn: func(s customStruct) customStruct {
-				return s
+			fn: func(s customStruct) (customStruct, error) {
+				return s, nil
 			},
 			status:   http.StatusOK,
 			header:   "",
 			wantResp: `{"id":12345,"name":"custom"}`,
 		},
 		{
+			name: "TestTypedFunction_no_return",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(s customStruct) {
+
+			},
+			status:   http.StatusOK,
+			header:   "",
+			wantResp: "",
+		},
+		{
 			name: "TestTypedFunction_untagged_struct",
 			body: []byte(`{"Age": 30,"Name": "john"}`),
-			fn: func(s testStruct) testStruct {
-				return s
+			fn: func(s testStruct) (testStruct, error) {
+				return s, nil
 			},
 			status:   http.StatusOK,
 			header:   "",
@@ -170,14 +180,25 @@ func TestRegisterTypedFunction(t *testing.T) {
 			wantResp: `{"id":12345,"name":"custom"}`,
 		},
 		{
-			name: "TestTypedFunction_return_string",
+			name: "TestTypedFunction_return_int",
 			body: []byte(`{"id": 12345,"name": "custom"}`),
-			fn: func(s customStruct) int {
-				return s.ID
+			fn: func(s customStruct) (int, error) {
+				return s.ID, nil
 			},
 			status:   http.StatusOK,
 			header:   "",
 			wantResp: "12345",
+		},
+		{
+			name: "TestTypedFunction_different_types",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(s customStruct) (testStruct, error) {
+				var t = testStruct{99, "John"}
+				return t, nil
+			},
+			status:   http.StatusOK,
+			header:   "",
+			wantResp: `{"Age":99,"Name":"John"}`,
 		},
 		{
 			name: "TestTypedFunction_return_error",
@@ -193,8 +214,8 @@ func TestRegisterTypedFunction(t *testing.T) {
 		{
 			name: "TestTypedFunction_data_error",
 			body: []byte(`{"id": 12345,"name": 5}`),
-			fn: func(s customStruct) customStruct {
-				return s
+			fn: func(s customStruct) (customStruct, error) {
+				return s, nil
 			},
 			status:     http.StatusBadRequest,
 			header:     "crash",
@@ -203,9 +224,9 @@ func TestRegisterTypedFunction(t *testing.T) {
 		{
 			name: "TestTypedFunction_func_error",
 			body: []byte(`{"id": 0,"name": "john"}`),
-			fn: func(s customStruct) customStruct {
+			fn: func(s customStruct) (customStruct, error) {
 				s.ID = 10 / s.ID
-				return s
+				return s, nil
 			},
 			status:     http.StatusInternalServerError,
 			header:     "crash",

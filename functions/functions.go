@@ -28,7 +28,7 @@ func CloudEvent(name string, fn func(context.Context, cloudevents.Event) error) 
 }
 
 // Typed registers a Typed function that becomes the function handler
-// served at "/" whenh environment variable `FUNCTION_TARGET=name`
+// served at "/" when environment variable `FUNCTION_TARGET=name`
 // This function takes a strong type T as an input and can return a strong type T,
 // built in types, nil and/or error as an output
 func Typed(name string, fn interface{}) {
