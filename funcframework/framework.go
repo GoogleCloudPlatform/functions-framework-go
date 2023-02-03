@@ -243,16 +243,16 @@ func wrapTypedFunction(fn interface{}) (http.Handler, error) {
 }
 
 func handleTypedReturn(funcReturn []reflect.Value, w http.ResponseWriter) {
-	if len(funcReturn) > 0 {
-		errorVal := funcReturn[len(funcReturn)-1].Interface() // last return must be of type error
-		firstVal := funcReturn[0].Interface()
-		if errorVal != nil && reflect.TypeOf(errorVal).AssignableTo(errorType) {
-			writeHTTPErrorResponse(w, http.StatusInternalServerError, errorStatus, fmtFunctionError(errorVal))
-		} else if !reflect.TypeOf(firstVal).AssignableTo(errorType) {
-			returnVal, _ := json.Marshal(firstVal)
-			fmt.Fprintf(w, string(returnVal))
-		}
-
+	if len(funcReturn) == 0 {
+		return
+	}
+	errorVal := funcReturn[len(funcReturn)-1].Interface() // last return must be of type error
+	firstVal := funcReturn[0].Interface()
+	if errorVal != nil && reflect.TypeOf(errorVal).AssignableTo(errorType) {
+		writeHTTPErrorResponse(w, http.StatusInternalServerError, errorStatus, fmtFunctionError(errorVal))
+	} else if !reflect.TypeOf(firstVal).AssignableTo(errorType) {
+		returnVal, _ := json.Marshal(firstVal)
+		fmt.Fprintf(w, string(returnVal))
 	}
 }
 
