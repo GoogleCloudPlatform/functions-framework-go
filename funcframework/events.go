@@ -126,9 +126,7 @@ func getBackgroundEvent(body []byte, path string) (*metadata.Metadata, interface
 	if possible.BackgroundEvent == nil && possible.LegacyPushSubscriptionEvent != nil {
 		topic, err := pubsub.ExtractTopicFromRequestPath(path)
 		if err != nil {
-			replacer := strings.NewReplacer("\n", "", "\r", "")
-			escapedLog := replacer.Replace(fmt.Sprintf("WARNING: %s", err))
-			fmt.Println(escapedLog)
+			fmt.Printf("WARNING: %s", err)
 		}
 		event = possible.LegacyPushSubscriptionEvent.ToBackgroundEvent(topic)
 	}

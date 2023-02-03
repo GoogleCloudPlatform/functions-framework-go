@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -294,15 +293,12 @@ func fmtFunctionError(err interface{}) string {
 	return formatted
 }
 
-func sanitizeMessage(message string) string {
-	replacer := strings.NewReplacer("\n", "", "\r", "")
-	return html.EscapeString(replacer.Replace(message))
-}
-
 func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg string) {
-	// Sanitize message before logging and writing to response
-	escapedMsg := sanitizeMessage(msg)
-	fmt.Fprintln(os.Stderr, escapedMsg)
+	// Ensure logs end with a newline otherwise they are grouped incorrectly in SD.
+	if !strings.HasSuffix(msg, "\n") {
+		msg += "\n"
+	}
+	fmt.Fprint(os.Stderr, msg)
 
 	// Flush stdout and stderr when running on GCF. This must be done before writing
 	// the HTTP response in order for all logs to appear in GCF.
@@ -313,5 +309,5 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 
 	w.Header().Set(functionStatusHeader, status)
 	w.WriteHeader(statusCode)
-	fmt.Fprintln(w, escapedMsg)
+	fmt.Fprint(w, msg)
 }
