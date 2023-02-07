@@ -39,8 +39,7 @@ const (
 	fnErrorMessageStderrTmpl = "Function error: %v"
 )
 
-var errorVar error
-var errorType = reflect.TypeOf(&errorVar).Elem()
+var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 // recoverPanic recovers from a panic in a consistent manner. panicSrc should
 // describe what was happening when the panic was encountered, for example
@@ -238,19 +237,22 @@ func wrapTypedFunction(fn interface{}) (http.Handler, error) {
 			argVal.Elem(),
 		})
 
-		handleTypedReturn(funcReturn, w)
+		handleTypedReturn(w, funcReturn)
 	}), nil
 }
 
-func handleTypedReturn(funcReturn []reflect.Value, w http.ResponseWriter) {
+func handleTypedReturn(w http.ResponseWriter, funcReturn []reflect.Value) {
 	if len(funcReturn) == 0 {
 		return
 	}
 	errorVal := funcReturn[len(funcReturn)-1].Interface() // last return must be of type error
-	firstVal := funcReturn[0].Interface()
 	if errorVal != nil && reflect.TypeOf(errorVal).AssignableTo(errorType) {
 		writeHTTPErrorResponse(w, http.StatusInternalServerError, errorStatus, fmtFunctionError(errorVal))
-	} else if !reflect.TypeOf(firstVal).AssignableTo(errorType) {
+		return
+	}
+
+	firstVal := funcReturn[0].Interface()
+	if !reflect.TypeOf(firstVal).AssignableTo(errorType) {
 		returnVal, _ := json.Marshal(firstVal)
 		fmt.Fprintf(w, string(returnVal))
 	}
