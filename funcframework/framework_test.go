@@ -219,7 +219,7 @@ func TestRegisterTypedFunction(t *testing.T) {
 			},
 			status:     http.StatusBadRequest,
 			header:     "crash",
-			wantStderr: "while converting input type data",
+			wantStderr: "while converting input data",
 		},
 		{
 			name: "TestTypedFunction_func_error",
