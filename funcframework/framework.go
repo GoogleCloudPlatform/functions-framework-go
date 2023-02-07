@@ -228,7 +228,7 @@ func wrapTypedFunction(fn interface{}) (http.Handler, error) {
 		argVal := inputType
 
 		if err := json.Unmarshal(body, argVal.Interface()); err != nil {
-			writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error while converting input type data: %s. %s", string(body), err.Error()))
+			writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error while converting input data. %s", err.Error()))
 			return
 		}
 
