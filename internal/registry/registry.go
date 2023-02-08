@@ -16,6 +16,7 @@ type RegisteredFunction struct {
 	CloudEventFn func(context.Context, cloudevents.Event) error // Optional: The user's CloudEvent function
 	HTTPFn       func(http.ResponseWriter, *http.Request)       // Optional: The user's HTTP function
 	EventFn      interface{}                                    // Optional: The user's Event function
+	TypedFn      interface{}                                    // Optional: The user's typed function
 }
 
 // Option is an option used when registering a function.
@@ -62,14 +63,19 @@ func (r *Registry) RegisterHTTP(fn func(http.ResponseWriter, *http.Request), opt
 	return r.register(&RegisteredFunction{HTTPFn: fn}, options...)
 }
 
-// RegistryCloudEvent registers a CloudEvent function.
+// RegisterCloudEvent registers a CloudEvent function.
 func (r *Registry) RegisterCloudEvent(fn func(context.Context, cloudevents.Event) error, options ...Option) error {
 	return r.register(&RegisteredFunction{CloudEventFn: fn}, options...)
 }
 
-// RegistryCloudEvent registers a Event function.
+// RegisterEvent registers an Event function.
 func (r *Registry) RegisterEvent(fn interface{}, options ...Option) error {
 	return r.register(&RegisteredFunction{EventFn: fn}, options...)
+}
+
+// RegisterTyped registers a strongly typed function.
+func (r *Registry) RegisterTyped(fn interface{}, options ...Option) error {
+	return r.register(&RegisteredFunction{TypedFn: fn}, options...)
 }
 
 func (r *Registry) register(function *RegisteredFunction, options ...Option) error {

@@ -39,6 +39,8 @@ const (
 	fnErrorMessageStderrTmpl = "Function error: %v"
 )
 
+var errorType = reflect.TypeOf((*error)(nil)).Elem()
+
 // recoverPanic recovers from a panic in a consistent manner. panicSrc should
 // describe what was happening when the panic was encountered, for example
 // "user function execution". w is an http.ResponseWriter to write a generic
@@ -168,6 +170,12 @@ func wrapFunction(fn *registry.RegisteredFunction) (http.Handler, error) {
 			return nil, fmt.Errorf("unexpected error in wrapEventFunction: %v", err)
 		}
 		return handler, nil
+	} else if fn.TypedFn != nil {
+		handler, err := wrapTypedFunction(fn.TypedFn)
+		if err != nil {
+			return nil, fmt.Errorf("unexpected error in wrapTypedFunction: %v", err)
+		}
+		return handler, nil
 	}
 	return nil, fmt.Errorf("missing function entry in %v", fn)
 }
@@ -204,6 +212,65 @@ func wrapEventFunction(fn interface{}) (http.Handler, error) {
 
 		handleEventFunction(w, r, fn)
 	}), nil
+}
+
+func wrapTypedFunction(fn interface{}) (http.Handler, error) {
+	inputType, err := validateTypedFunction(fn)
+	if err != nil {
+		return nil, err
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := readHTTPRequestBody(r)
+		if err != nil {
+			writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("%v", err))
+			return
+		}
+		argVal := inputType
+
+		if err := json.Unmarshal(body, argVal.Interface()); err != nil {
+			writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("Error while converting input data. %s", err.Error()))
+			return
+		}
+
+		defer recoverPanic(w, "user function execution")
+		funcReturn := reflect.ValueOf(fn).Call([]reflect.Value{
+			argVal.Elem(),
+		})
+
+		handleTypedReturn(w, funcReturn)
+	}), nil
+}
+
+func handleTypedReturn(w http.ResponseWriter, funcReturn []reflect.Value) {
+	if len(funcReturn) == 0 {
+		return
+	}
+	errorVal := funcReturn[len(funcReturn)-1].Interface() // last return must be of type error
+	if errorVal != nil && reflect.TypeOf(errorVal).AssignableTo(errorType) {
+		writeHTTPErrorResponse(w, http.StatusInternalServerError, errorStatus, fmtFunctionError(errorVal))
+		return
+	}
+
+	firstVal := funcReturn[0].Interface()
+	if !reflect.TypeOf(firstVal).AssignableTo(errorType) {
+		returnVal, _ := json.Marshal(firstVal)
+		fmt.Fprintf(w, string(returnVal))
+	}
+}
+
+func validateTypedFunction(fn interface{}) (*reflect.Value, error) {
+	ft := reflect.TypeOf(fn)
+	if ft.NumIn() != 1 {
+		return nil, fmt.Errorf("expected function to have one parameters, found %d", ft.NumIn())
+	}
+	if ft.NumOut() > 2 {
+		return nil, fmt.Errorf("expected function to have maximum two return values")
+	}
+	if ft.NumOut() > 0 && !ft.Out(ft.NumOut()-1).AssignableTo(errorType) {
+		return nil, fmt.Errorf("expected last return type to be of error")
+	}
+	var inputType = reflect.New(ft.In(0))
+	return &inputType, nil
 }
 
 func wrapCloudEventFunction(ctx context.Context, fn func(context.Context, cloudevents.Event) error) (http.Handler, error) {
