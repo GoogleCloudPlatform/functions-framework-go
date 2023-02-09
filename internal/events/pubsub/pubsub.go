@@ -4,6 +4,7 @@ package pubsub
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/functions/metadata"
@@ -50,8 +51,11 @@ func ExtractTopicFromRequestPath(path string) (string, error) {
 	re := regexp.MustCompile(`(projects\/[^/?]+\/topics\/[^/?]+)/*`)
 	matches := re.FindStringSubmatch(path)
 	if matches == nil {
+		// Prevent log injection by removing newline characters in path
+		replacer := strings.NewReplacer("\n", "", "\r", "")
+		escapedPath := replacer.Replace(path)
 		return "", fmt.Errorf("failed to extract Pub/Sub topic name from the URL request path: %q, configure your subscription's push endpoint to use the following path pattern: 'projects/PROJECT_NAME/topics/TOPIC_NAME'",
-			path)
+			escapedPath)
 	}
 
 	// Index 0 is the entire input string matched, index 1 is the first submatch
