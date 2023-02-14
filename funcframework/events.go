@@ -217,7 +217,7 @@ func encodeData(d interface{}) ([]byte, error) {
 // associated with the given CloudEvent service. See ceServiceToResourceRe for the regexp
 // mapping. For example,
 //
-//   "projects/_/buckets/some-bucket/objects/folder/test.txt"
+//	"projects/_/buckets/some-bucket/objects/folder/test.txt"
 //
 // would be split to create the strings "projects/_/buckets/some-bucket"
 // and "objects/folder/test.txt". This function returns the resource string, the

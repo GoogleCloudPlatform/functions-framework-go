@@ -117,8 +117,198 @@ type customStruct struct {
 	Name string `json:"name"`
 }
 
+type testStruct struct {
+	Age  int
+	Name string
+}
+
 type eventData struct {
 	Data string `json:"data"`
+}
+
+func TestRegisterTypedFunction(t *testing.T) {
+	var tests = []struct {
+		name       string
+		path       string
+		body       []byte
+		fn         interface{}
+		target     string
+		status     int
+		header     string
+		ceHeaders  map[string]string
+		wantResp   string
+		wantStderr string
+	}{
+		{
+			name: "TestTypedFunction_typed",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(s customStruct) (customStruct, error) {
+				return s, nil
+			},
+			status:   http.StatusOK,
+			header:   "",
+			wantResp: `{"id":12345,"name":"custom"}`,
+		},
+		{
+			name: "TestTypedFunction_no_return",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(s customStruct) {
+
+			},
+			status:   http.StatusOK,
+			header:   "",
+			wantResp: "",
+		},
+		{
+			name: "TestTypedFunction_untagged_struct",
+			body: []byte(`{"Age": 30,"Name": "john"}`),
+			fn: func(s testStruct) (testStruct, error) {
+				return s, nil
+			},
+			status:   http.StatusOK,
+			header:   "",
+			wantResp: `{"Age":30,"Name":"john"}`,
+		},
+		{
+			name: "TestTypedFunction_two_returns",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(s customStruct) (customStruct, error) {
+				return s, nil
+			},
+			status:   http.StatusOK,
+			header:   "",
+			wantResp: `{"id":12345,"name":"custom"}`,
+		},
+		{
+			name: "TestTypedFunction_return_int",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(s customStruct) (int, error) {
+				return s.ID, nil
+			},
+			status:   http.StatusOK,
+			header:   "",
+			wantResp: "12345",
+		},
+		{
+			name: "TestTypedFunction_different_types",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(s customStruct) (testStruct, error) {
+				var t = testStruct{99, "John"}
+				return t, nil
+			},
+			status:   http.StatusOK,
+			header:   "",
+			wantResp: `{"Age":99,"Name":"John"}`,
+		},
+		{
+			name: "TestTypedFunction_return_error",
+			body: []byte(`{"id": 12345,"name": "custom"}`),
+			fn: func(s customStruct) error {
+				return fmt.Errorf("Some error message")
+			},
+			status:     http.StatusInternalServerError,
+			header:     "error",
+			wantResp:   fmt.Sprintf(fnErrorMessageStderrTmpl, "Some error message"),
+			wantStderr: "Some error message",
+		},
+		{
+			name: "TestTypedFunction_data_error",
+			body: []byte(`{"id": 12345,"name": 5}`),
+			fn: func(s customStruct) (customStruct, error) {
+				return s, nil
+			},
+			status:     http.StatusBadRequest,
+			header:     "crash",
+			wantStderr: "while converting input data",
+		},
+		{
+			name: "TestTypedFunction_func_error",
+			body: []byte(`{"id": 0,"name": "john"}`),
+			fn: func(s customStruct) (customStruct, error) {
+				s.ID = 10 / s.ID
+				return s, nil
+			},
+			status:     http.StatusInternalServerError,
+			header:     "crash",
+			wantStderr: "A panic occurred during user function execution",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			defer cleanup()
+			if len(tc.target) > 0 {
+				os.Setenv("FUNCTION_TARGET", tc.target)
+			}
+			functions.Typed(tc.name, tc.fn)
+			if _, ok := registry.Default().GetRegisteredFunction(tc.name); !ok {
+				t.Fatalf("could not get registered function: %s", tc.name)
+			}
+
+			origStderrPipe := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+			defer func() { os.Stderr = origStderrPipe }()
+
+			server, err := initServer()
+			if err != nil {
+				t.Fatalf("initServer(): %v", err)
+			}
+			srv := httptest.NewServer(server)
+			defer srv.Close()
+
+			req, err := http.NewRequest("POST", srv.URL+"/"+tc.name, bytes.NewBuffer(tc.body))
+			if err != nil {
+				t.Fatalf("error creating HTTP request for test: %v", err)
+			}
+			for k, v := range tc.ceHeaders {
+				req.Header.Add(k, v)
+			}
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatalf("client.Do(%s): %v", tc.name, err)
+			}
+
+			if err := w.Close(); err != nil {
+				t.Fatalf("failed to close stderr write pipe: %v", err)
+			}
+
+			stderr, err := ioutil.ReadAll(r)
+			if err != nil {
+				t.Errorf("failed to read stderr read pipe: %v", err)
+			}
+
+			if err := r.Close(); err != nil {
+				t.Fatalf("failed to close stderr read pipe: %v", err)
+			}
+
+			if !strings.Contains(string(stderr), tc.wantStderr) {
+				t.Errorf("stderr mismatch, got: %q, must contain: %q", string(stderr), tc.wantStderr)
+			}
+
+			if tc.wantStderr != "" && !strings.Contains(string(stderr), tc.wantStderr) {
+				t.Errorf("stderr mismatch, got: %q, must contain: %q", string(stderr), tc.wantStderr)
+			}
+
+			gotBody, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("unable to read got request body: %v", err)
+			}
+
+			if tc.wantResp != "" && strings.TrimSpace(string(gotBody)) != tc.wantResp {
+				t.Errorf("TestTypedFunction(%s): response body = %q, want %q on error status code %d.", tc.name, gotBody, tc.wantResp, tc.status)
+			}
+
+			if resp.StatusCode != tc.status {
+				t.Errorf("TestTypedFunction(%s): response status = %v, want %v, %q.", tc.name, resp.StatusCode, tc.status, string(gotBody))
+			}
+			if resp.Header.Get(functionStatusHeader) != tc.header {
+				t.Errorf("TestTypedFunction(%s): response header = %q, want %q", tc.name, resp.Header.Get(functionStatusHeader), tc.header)
+			}
+		})
+	}
 }
 
 func TestRegisterEventFunctionContext(t *testing.T) {
