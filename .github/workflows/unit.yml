@@ -25,7 +25,7 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2.2.0
       with:
-        go-version: '${{ matrix.go }}'
+        go-version: ${{ matrix.go }}
     - name: Build and test
       run: "go test ./..."
     - name: Vet
