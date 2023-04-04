@@ -7,6 +7,10 @@ on:
     branches:
       - master
   workflow_dispatch:
+
+# Declare default permissions as read only.
+permissions: read-all
+
 jobs:
   # Download the Go conformance client binary in it's own Github runner so that the version of Go used doesn't matter
   download-conformance-client:
