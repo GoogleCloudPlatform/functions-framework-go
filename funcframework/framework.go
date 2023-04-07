@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -206,7 +207,8 @@ func wrapEventFunction(fn interface{}) (http.Handler, error) {
 
 		if shouldConvertCloudEventToBackgroundRequest(r) {
 			if err := convertCloudEventToBackgroundRequest(r); err != nil {
-				writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("error converting CloudEvent to Background Event: %v", err))
+				escapedString := html.EscapeString(fmt.Sprintf("error converting CloudEvent to Background Event: %v", err))
+				writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, escapedString)
 			}
 		}
 
