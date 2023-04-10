@@ -8,8 +8,5 @@
         "major"
       ]
     }
-  ],
-  "ignorePaths": [
-    "examples/**"
   ]
 }
