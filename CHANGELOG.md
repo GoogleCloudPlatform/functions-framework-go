@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.0](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.6.1...v1.7.0) (2023-04-18)
+
+
+### Features
+
+* Add support for strongly typed function signature ([#168](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/168)) ([06264b6](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/06264b6785e5aef394d97e516d5c1819d3e09d91))
+* Allow registering multiple functions with one server for local testing ([#154](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/154)) ([fcc3f61](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/fcc3f6159d0d8e29bfeb715b6d1319fedcfb0510))
+* configure security score card action ([#169](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/169)) ([e038fee](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/e038fee735ad43d26c86cc5fc5887b42dc52b467))
+
 ## [1.6.0](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.5.3...v1.6.0) (2022-08-05)
 
 
