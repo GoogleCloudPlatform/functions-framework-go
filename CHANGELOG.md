@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.7.0...v1.7.1) (2023-04-24)
+
+
+### Bug Fixes
+
+* add new line to panic stack trace so Error Reporting can ingest the log ([#190](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/190)) ([76466dd](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/76466dd6f852c36c564de88bdf46b1fd6a8c04cd))
+
 ## [1.7.0](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.6.1...v1.7.0) (2023-04-18)
 
 
