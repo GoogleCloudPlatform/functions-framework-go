@@ -19,23 +19,23 @@ jobs:
       cache-key: ${{ steps.resolve-latest-client.outputs.version }}
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@18bf8ad2ca49c14cbb28b91346d626ccfb00c518 # v2.1.0
+      uses: step-security/harden-runner@6b3083af2869dc3314a0257a42f4af696cc79ba3 # v2.3.1
       with:
         egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
 
     - name: Resolve latest client version
       id: resolve-latest-client
-      uses: GoogleCloudPlatform/functions-framework-conformance/.github/actions/client/resolve-latest@42e1d91749b9c9d59fe405c254dc5de4b3b801ca # v1.7.0
+      uses: GoogleCloudPlatform/functions-framework-conformance/.github/actions/client/resolve-latest@1975792fb34ebbfa058d690666186d669d3a5977 # v1.8.0
     # Check if it's already in the cache
     - name: Cache client
       id: check-for-cached-client
-      uses: actions/cache@627f0f41f6904a5b1efbaed9f96d9eb58e92e920 # v3.2.4
+      uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
       with:
         path: ~/go/bin/client
         key: ${{ steps.resolve-latest-client.outputs.version }}
     - name: Install and cache client
       if: ${{ steps.check-for-cached-client.outputs.cache-hit != 'true' }}
-      uses: GoogleCloudPlatform/functions-framework-conformance/.github/actions/client/install@42e1d91749b9c9d59fe405c254dc5de4b3b801ca # v1.7.0
+      uses: GoogleCloudPlatform/functions-framework-conformance/.github/actions/client/install@1975792fb34ebbfa058d690666186d669d3a5977 # v1.8.0
       with:
         cache-path: ~/go/bin/client
         cache-key: ${{ steps.resolve-latest-client.outputs.version }}
@@ -48,12 +48,12 @@ jobs:
         go-version: [1.13, 1.16, 1.18]
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@18bf8ad2ca49c14cbb28b91346d626ccfb00c518 # v2.1.0
+      uses: step-security/harden-runner@6b3083af2869dc3314a0257a42f4af696cc79ba3 # v2.3.1
       with:
         egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
 
     - name: Check out code
-      uses: actions/checkout@dc323e67f16fb5f7663d20ff7941f27f5809e9b6 # v2.6.0
+      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
     - name: Set up Go ${{ matrix.go-version }}
       uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2.2.0
       with:
@@ -61,7 +61,7 @@ jobs:
     - name: Pre-fetch go dependencies and build
       run: 'go build ./...'
     - name: Fetch conformance client
-      uses: actions/cache@627f0f41f6904a5b1efbaed9f96d9eb58e92e920 # v3.2.4
+      uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
       with:
         path: ~/go/bin/client
         key: ${{ needs.download-conformance-client.outputs.cache-key }}
