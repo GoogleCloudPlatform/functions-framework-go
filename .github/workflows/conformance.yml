@@ -55,7 +55,7 @@ jobs:
     - name: Check out code
       uses: actions/checkout@dc323e67f16fb5f7663d20ff7941f27f5809e9b6 # v2.6.0
     - name: Set up Go ${{ matrix.go-version }}
-      uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2.2.0
+      uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
       with:
         go-version: '${{ matrix.go-version }}'
     - name: Pre-fetch go dependencies and build
