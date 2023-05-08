@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.2](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.7.1...v1.7.2) (2023-05-08)
+
+
+### Bug Fixes
+
+* wrap panic message when log to stderr ([#195](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/195)) ([a1541ce](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/a1541ce7b2b9d2e7ec93833fee4c88a384cca89a))
+
 ## [1.7.1](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.7.0...v1.7.1) (2023-04-24)
 
 
