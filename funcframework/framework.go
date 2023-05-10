@@ -49,7 +49,7 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 func recoverPanic(w http.ResponseWriter, panicSrc string) {
 	if r := recover(); r != nil {
 		genericMsg := fmt.Sprintf(panicMessageTmpl, panicSrc)
-		fmt.Fprintf(os.Stderr, fmt.Sprintf("%s\npanic message: %v\nstack trace: \n%s", genericMsg, r, debug.Stack()))
+		fmt.Fprintf(os.Stderr, "%s\npanic message: %v - stack trace:\n%s", genericMsg, r, debug.Stack())
 		if w != nil {
 			writeHTTPErrorResponse(w, http.StatusInternalServerError, crashStatus, genericMsg)
 		}
