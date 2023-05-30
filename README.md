@@ -2,7 +2,7 @@
 
 [![GoDoc](https://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go?status.svg)](http://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go) [![Go version](https://img.shields.io/badge/go-v1.11+-blue)](https://golang.org/dl/#stable)
 
-[![Go unit CI][ff_go_unit_img]][ff_go_unit_link] [![Go lint CI][ff_go_lint_img]][ff_go_lint_link] [![Go conformace CI][ff_go_conformance_img]][ff_go_conformance_link]
+[![Go unit CI][ff_go_unit_img]][ff_go_unit_link] [![Go lint CI][ff_go_lint_img]][ff_go_lint_link] [![Go conformace CI][ff_go_conformance_img]][ff_go_conformance_link]  ![Security Scorecard](https://api.securityscorecards.dev/projects/github.com/GoogleCloudPlatform/functions-framework-go/badge)
 
 An open source FaaS (Function as a Service) framework for writing portable
 Go functions, brought to you by the Google Cloud Functions team.
