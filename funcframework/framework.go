@@ -149,7 +149,7 @@ func initServer() (*http.ServeMux, error) {
 func wrapFunction(fn *registry.RegisteredFunction) (http.Handler, error) {
 	// Check if we have a function resource set, and if so, log progress.
 	if os.Getenv("FUNCTION_TARGET") == "" {
-		fmt.Printf("Serving function: %q", fn.Name)
+		fmt.Printf("Serving function: %q\n", fn.Name)
 	}
 
 	if fn.HTTPFn != nil {
