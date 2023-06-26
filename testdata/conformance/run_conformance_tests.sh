@@ -46,6 +46,9 @@ echo "Done installing client$CLIENT_VERSION"
 print_header "HTTP CONFORMANCE TESTS"
 client -buildpacks=false -type=http -cmd='go run cmd/http/main.go' -start-delay 1 -validate-mapping=true
 
+print_header "TYPED CONFORMANCE TESTS"
+FUNCTION_TARGET=declarativeTyped client -buildpacks=false -type=http -declarative-type=typed -cmd='go run cmd/declarative/main.go' -start-delay 1
+
 print_header "BACKGROUND EVENT CONFORMANCE TESTS"
 client -buildpacks=false -type=legacyevent -cmd='go run cmd/legacyevent/main.go' -start-delay 1 -validate-mapping=true
 
