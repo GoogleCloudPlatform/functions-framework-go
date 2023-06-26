@@ -98,6 +98,14 @@ jobs:
             -buildpacks=false \
             -start-delay=5 \
             -cmd="go run testdata/conformance/cmd/declarative/main.go"
+    - name: Run Typed conformance tests using declarative API
+      run: |
+          FUNCTION_TARGET=declarativeTyped client \
+            -type=http \
+            -declarative-type=typed \
+            -buildpacks=false \
+            -start-delay=5 \
+            -cmd="go run testdata/conformance/cmd/declarative/main.go"
     - name: Run CloudEvent conformance tests using declarative API
       run: |
           FUNCTION_TARGET=declarativeCloudEvent client \
