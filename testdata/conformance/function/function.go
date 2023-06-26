@@ -35,6 +35,7 @@ const (
 func init() {
 	functions.HTTP("declarativeHTTP", HTTP)
 	functions.HTTP("concurrentHTTP", concurrentHTTP)
+	functions.Typed("declarativeTyped", Typed)
 	functions.CloudEvent("declarativeCloudEvent", CloudEvent)
 }
 
@@ -67,4 +68,15 @@ func CloudEvent(ctx context.Context, ce cloudevents.Event) error {
 	}
 
 	return nil
+}
+
+// Typed is a typed function that dumps the request JSON into the "payload" field of the response i.e. the request {"message":"foo"} becomes {"payload":{"message":"foo"}}}
+func Typed(req interface{}) (ConformanceResponse, error) {
+	return ConformanceResponse{
+		Payload: req,
+	}, nil
+}
+
+type ConformanceResponse struct {
+	Payload interface{} `json:"payload"`
 }
