@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.5](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.7.4...v1.7.5) (2023-06-26)
+
+
+### Bug Fixes
+
+* correct formatting of status print ([#206](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/206)) ([b16760a](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/b16760a8d0375dd484d8e74beb3646b43cc1c741))
+
 ## [1.7.4](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.7.3...v1.7.4) (2023-06-06)
 
 
