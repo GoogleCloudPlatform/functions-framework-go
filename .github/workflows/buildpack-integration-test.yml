@@ -1,4 +1,3 @@
-
 # Validates Functions Framework with GCF buildpacks.
 name: Buildpack Integration Test
 on:
@@ -6,35 +5,42 @@ on:
     branches:
       - master
   workflow_dispatch:
+  pull_request:
+  # Runs every day on 12:00 AM PST
+  schedule:
+    - cron: "0 0 * * *"
 
 # Declare default permissions as read only.
 permissions: read-all
 
 jobs:
   go113-buildpack-test:
-    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.8.0
+    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.8.4
     with:
       http-builder-source: 'testdata/conformance/function'
       http-builder-target: 'declarativeHTTP'
       cloudevent-builder-source: 'testdata/conformance/function'
       cloudevent-builder-target: 'declarativeCloudEvent'
-      prerun: 'testdata/conformance/prerun.sh ${{ github.sha }} testdata/conformance/function'
+      prerun: ${{format('testdata/conformance/prerun.sh {0} testdata/conformance/function', github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha )}}
       builder-runtime: 'go113'
+      builder-runtime-version: '1.13'
   go116-buildpack-test:
-    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.8.0
+    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.8.4
     with:
       http-builder-source: 'testdata/conformance/function'
       http-builder-target: 'declarativeHTTP'
       cloudevent-builder-source: 'testdata/conformance/function'
       cloudevent-builder-target: 'declarativeCloudEvent'
-      prerun: 'testdata/conformance/prerun.sh ${{ github.sha }} testdata/conformance/function'
+      prerun:  ${{format('testdata/conformance/prerun.sh {0} testdata/conformance/function', github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha )}}
       builder-runtime: 'go116'
+      builder-runtime-version: '1.16'
   non-declarative-buildpack-test:
-    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.8.0
+    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.8.4
     with:
       http-builder-source: 'testdata/conformance/nondeclarative'
       http-builder-target: 'HTTP'
       cloudevent-builder-source: 'testdata/conformance/nondeclarative'
       cloudevent-builder-target: 'CloudEvent'
-      prerun: 'testdata/conformance/prerun.sh ${{ github.sha }} testdata/conformance/nondeclarative'
+      prerun:  ${{format('testdata/conformance/prerun.sh {0} testdata/conformance/nondeclarative', github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha )}}
       builder-runtime: 'go116'
+      builder-runtime-version: '1.16'

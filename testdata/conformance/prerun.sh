@@ -14,16 +14,14 @@ TARGET_DIRECTORY=$2 # relative to repo root
 # exit when any command fails
 set -e
 
-if [ -z "${FRAMEWORK_VERSION}" ]
-    then
-        echo "Functions Framework version required as first parameter"
-        exit 1
+if [ -z "${FRAMEWORK_VERSION}" ]; then
+    echo "Functions Framework version required as first parameter"
+    exit 1
 fi
 
-if [ -z "${TARGET_DIRECTORY}" ]
-    then
-        echo "Target directory required as second parameter"
-        exit 1
+if [ -z "${TARGET_DIRECTORY}" ]; then
+    echo "Target directory required as second parameter"
+    exit 1
 fi
 
 cd $(dirname $0)
@@ -38,8 +36,11 @@ go 1.13
 
 require (
         cloud.google.com/go/functions v1.0.0
-        github.com/GoogleCloudPlatform/functions-framework-go $FRAMEWORK_VERSION
         github.com/cloudevents/sdk-go/v2 v2.6.1
-)" >> $TARGET_DIRECTORY/go.mod
+)" >>$TARGET_DIRECTORY/go.mod
 
-cat $TARGET_DIRECTORY/go.mod
+cd $TARGET_DIRECTORY
+
+go mod edit -require github.com/GoogleCloudPlatform/functions-framework-go@$FRAMEWORK_VERSION
+
+cat go.mod
