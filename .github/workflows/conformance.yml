@@ -2,10 +2,10 @@ name: Go Conformance CI
 on:
   pull_request:
     branches:
-      - master
+      - main
   push:
     branches:
-      - master
+      - main
   workflow_dispatch:
 
 # Declare default permissions as read only.

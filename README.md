@@ -163,7 +163,7 @@ Deploy from your local machine using the `gcloud` command-line tool.
 
 The Functions Framework is designed to be compatible with Knative environments.
 Just build and deploy your container to a Knative environment. Note that your app needs to listen
-`PORT` environment variable per [Knative runtime contract](https://github.com/knative/serving/blob/master/docs/runtime-contract.md#inbound-network-connectivity).
+`PORT` environment variable per [Knative runtime contract](https://github.com/knative/serving/blob/main/docs/runtime-contract.md#inbound-network-connectivity).
 
 ## Functions Framework Features
 
