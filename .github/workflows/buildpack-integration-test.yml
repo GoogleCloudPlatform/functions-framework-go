@@ -15,7 +15,7 @@ permissions: read-all
 
 jobs:
   go113-buildpack-test:
-    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.8.4
+    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@main
     with:
       http-builder-source: 'testdata/conformance/function'
       http-builder-target: 'declarativeHTTP'
@@ -25,7 +25,7 @@ jobs:
       builder-runtime: 'go113'
       builder-runtime-version: '1.13'
   go116-buildpack-test:
-    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.8.4
+    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@main
     with:
       http-builder-source: 'testdata/conformance/function'
       http-builder-target: 'declarativeHTTP'
@@ -35,7 +35,7 @@ jobs:
       builder-runtime: 'go116'
       builder-runtime-version: '1.16'
   non-declarative-buildpack-test:
-    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@v1.8.4
+    uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@main
     with:
       http-builder-source: 'testdata/conformance/nondeclarative'
       http-builder-target: 'HTTP'
