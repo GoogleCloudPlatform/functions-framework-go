@@ -25,6 +25,7 @@ jobs:
           github.com:443
           objects.githubusercontent.com:443
           proxy.golang.org:443
+          cloud.google.com:443
 
     - name: Checkout code
       uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
