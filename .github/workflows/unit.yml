@@ -27,6 +27,10 @@ jobs:
           proxy.golang.org:443
           cloud.google.com:443
           golang.org:443
+          go.uber.org:443
+          go.googlesource.com:443
+          go.uber.org:443
+          gopkg.in:443
 
     - name: Checkout code
       uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
