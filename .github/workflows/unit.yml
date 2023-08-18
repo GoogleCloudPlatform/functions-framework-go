@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go: ['1.11', '1.13', '1.16', '1.18', '1.19', '1.20', '1.21']
+        go: ['1.13', '1.16', '1.18', '1.19', '1.20', '1.21']
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
     - name: Harden Runner
@@ -25,14 +25,6 @@ jobs:
           github.com:443
           objects.githubusercontent.com:443
           proxy.golang.org:443
-          cloud.google.com:443
-          golang.org:443
-          go.uber.org:443
-          go.googlesource.com:443
-          go.uber.org:443
-          gopkg.in:443
-          google.golang.org:443
-          go.opencensus.io:443
 
     - name: Checkout code
       uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
