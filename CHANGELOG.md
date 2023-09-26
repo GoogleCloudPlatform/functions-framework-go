@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.7.4...v1.8.0) (2023-09-26)
+
+
+### Features
+
+* Added instructions for binding locally. ([#215](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/215)) ([8e6bded](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/8e6bded26745b8808c60ced353085d229fba0f38))
+
+
+### Bug Fixes
+
+* correct formatting of status print ([#206](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/206)) ([b16760a](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/b16760a8d0375dd484d8e74beb3646b43cc1c741))
+
 ## [1.7.4](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.7.3...v1.7.4) (2023-06-06)
 
 
