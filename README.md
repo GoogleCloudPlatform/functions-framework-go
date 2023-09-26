@@ -103,8 +103,16 @@ handling logic.
 		if envPort := os.Getenv("PORT"); envPort != "" {
 			port = envPort
 		}
-		if err := funcframework.Start(port); err != nil {
-			log.Fatalf("funcframework.Start: %v\n", err)
+		
+		// By default, listen on all interfaces. If testing locally, run with 
+		// LOCAL_ONLY=true to avoid triggering firewall warnings and 
+		// exposing the server outside of your own machine.
+		hostname := ""
+		if localOnly := os.Getenv("LOCAL_ONLY"); localOnly == "true" {
+			hostname = "127.0.0.1"
+		} 
+		if err := funcframework.StartHostPort(hostname, port); err != nil {
+			log.Fatalf("funcframework.StartHostPort: %v\n", err)
 		}
 	}
 	```
@@ -113,8 +121,7 @@ handling logic.
 
 1. Start the local development server:
 	```sh
-	export FUNCTION_TARGET=HelloWorld
-	go run cmd/main.go
+	FUNCTION_TARGET=HelloWorld LOCAL_ONLY=true go run cmd/main.go
 	# Output: Serving function: HelloWorld
 	```
 
