@@ -15,6 +15,7 @@ permissions: read-all
 
 jobs:
   go113-buildpack-test:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@main
     with:
       http-builder-source: 'testdata/conformance/function'
@@ -25,6 +26,7 @@ jobs:
       builder-runtime: 'go113'
       builder-runtime-version: '1.13'
   go116-buildpack-test:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@main
     with:
       http-builder-source: 'testdata/conformance/function'
@@ -35,6 +37,7 @@ jobs:
       builder-runtime: 'go116'
       builder-runtime-version: '1.16'
   non-declarative-buildpack-test:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@main
     with:
       http-builder-source: 'testdata/conformance/nondeclarative'
