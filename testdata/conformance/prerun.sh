@@ -35,8 +35,8 @@ echo "module example.com/function
 go 1.13
 
 require (
-        cloud.google.com/go/functions v1.0.0
-        github.com/cloudevents/sdk-go/v2 v2.6.1
+        cloud.google.com/go/functions v1.15.3
+        github.com/cloudevents/sdk-go/v2 v2.14.0
 )" >>$TARGET_DIRECTORY/go.mod
 
 cd $TARGET_DIRECTORY
