@@ -767,6 +767,7 @@ func TestRegisterCloudEventFunctionContext(t *testing.T) {
 			ceHeaders: map[string]string{
 				"Content-Type": "application/cloudevents+json",
 			},
+			wantStderr: fmt.Sprintf(panicMessageTmpl, "user function execution"),
 		},
 		{
 			name: "error returns 500",

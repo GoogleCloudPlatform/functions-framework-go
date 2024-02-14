@@ -45,13 +45,17 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 // describe what was happening when the panic was encountered, for example
 // "user function execution". w is an http.ResponseWriter to write a generic
 // response body to that does not expose the details of the panic; w can be
-// nil to skip this.
-func recoverPanic(w http.ResponseWriter, panicSrc string) {
+// nil to skip this. If panic needs to be recovered by different caller
+// set shouldPanic to true.
+func recoverPanic(w http.ResponseWriter, panicSrc string, shouldPanic bool) {
 	if r := recover(); r != nil {
 		genericMsg := fmt.Sprintf(panicMessageTmpl, panicSrc)
-		fmt.Fprintf(os.Stderr, "%s\npanic message: %v\nstack trace: \n%s", genericMsg, r, debug.Stack())
+		fmt.Fprintf(os.Stderr, "%s\npanic message: %v\nstack trace: %v\n%s", genericMsg, r, r, debug.Stack())
 		if w != nil {
 			writeHTTPErrorResponse(w, http.StatusInternalServerError, crashStatus, genericMsg)
+		}
+		if shouldPanic {
+			panic(r)
 		}
 	}
 }
@@ -59,7 +63,7 @@ func recoverPanic(w http.ResponseWriter, panicSrc string) {
 // RegisterHTTPFunction registers fn as an HTTP function.
 // Maintained for backward compatibility. Please use RegisterHTTPFunctionContext instead.
 func RegisterHTTPFunction(path string, fn interface{}) {
-	defer recoverPanic(nil, "function registration")
+	defer recoverPanic(nil, "function registration", false)
 
 	fnHTTP, ok := fn.(func(http.ResponseWriter, *http.Request))
 	if !ok {
@@ -76,7 +80,7 @@ func RegisterHTTPFunction(path string, fn interface{}) {
 // Maintained for backward compatibility. Please use RegisterEventFunctionContext instead.
 func RegisterEventFunction(path string, fn interface{}) {
 	ctx := context.Background()
-	defer recoverPanic(nil, "function registration")
+	defer recoverPanic(nil, "function registration", false)
 	if err := RegisterEventFunctionContext(ctx, path, fn); err != nil {
 		panic(fmt.Sprintf("unexpected error in RegisterEventFunctionContext: %v", err))
 	}
@@ -192,7 +196,7 @@ func wrapHTTPFunction(fn func(http.ResponseWriter, *http.Request)) (http.Handler
 			defer fmt.Println()
 			defer fmt.Fprintln(os.Stderr)
 		}
-		defer recoverPanic(w, "user function execution")
+		defer recoverPanic(w, "user function execution", false)
 		fn(w, r)
 	}), nil
 }
@@ -237,7 +241,7 @@ func wrapTypedFunction(fn interface{}) (http.Handler, error) {
 			return
 		}
 
-		defer recoverPanic(w, "user function execution")
+		defer recoverPanic(w, "user function execution", false)
 		funcReturn := reflect.ValueOf(fn).Call([]reflect.Value{
 			argVal.Elem(),
 		})
@@ -286,6 +290,7 @@ func wrapCloudEventFunction(ctx context.Context, fn func(context.Context, cloude
 
 	// Always log errors returned by the function to stderr
 	logErrFn := func(ctx context.Context, ce cloudevents.Event) error {
+		defer recoverPanic(nil, "user function execution", true)
 		err := fn(ctx, ce)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, fmtFunctionError(err))
@@ -345,7 +350,7 @@ func runUserFunctionWithContext(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
-	defer recoverPanic(w, "user function execution")
+	defer recoverPanic(w, "user function execution", false)
 	userFunErr := reflect.ValueOf(fn).Call([]reflect.Value{
 		reflect.ValueOf(ctx),
 		argVal.Elem(),
