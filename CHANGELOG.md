@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.8.0...v1.8.1) (2024-02-14)
+
+
+### Bug Fixes
+
+* Add GCP error reporting log format to cloudevent functions and include panic message in stack trace. ([#230](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/230)) ([0a89bb4](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/0a89bb412a447495e1b13877f913718baa7afcd1))
+
 ## [1.8.0](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.7.4...v1.8.0) (2023-09-26)
 
 
