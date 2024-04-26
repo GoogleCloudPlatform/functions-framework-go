@@ -19,7 +19,7 @@ jobs:
       cache-key: ${{ steps.resolve-latest-client.outputs.version }}
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@eb238b55efaa70779f274895e782ed17c84f2895 # v2.6.1
+      uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
       with:
         egress-policy: block
         allowed-endpoints: >
@@ -34,7 +34,7 @@ jobs:
     # Check if it's already in the cache
     - name: Cache client
       id: check-for-cached-client
-      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: ~/go/bin/client
         key: ${{ steps.resolve-latest-client.outputs.version }}
@@ -53,12 +53,12 @@ jobs:
         go-version: [1.13, 1.16, 1.18]
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@eb238b55efaa70779f274895e782ed17c84f2895 # v2.6.1
+      uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
       with:
         egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
 
     - name: Check out code
-      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
     - name: Set up Go ${{ matrix.go-version }}
       uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
       with:
@@ -66,7 +66,7 @@ jobs:
     - name: Pre-fetch go dependencies and build
       run: 'go build ./...'
     - name: Fetch conformance client
-      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
       with:
         path: ~/go/bin/client
         key: ${{ needs.download-conformance-client.outputs.cache-key }}
