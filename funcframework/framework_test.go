@@ -1001,7 +1001,6 @@ func TestHTTPRequestTimeout(t *testing.T) {
 	timeoutEnvVar := "CLOUD_RUN_TIMEOUT_SECONDS"
 	prev := os.Getenv(timeoutEnvVar)
 	defer os.Setenv(timeoutEnvVar, prev)
-	defer cleanup()
 
 	cloudeventsJSON := []byte(`{
 		"specversion" : "1.0",
@@ -1016,34 +1015,34 @@ func TestHTTPRequestTimeout(t *testing.T) {
 	}`)
 
 	tcs := []struct {
-		name         string
-		wantDeadline bool
-		wantExpired  bool
-		timeout      string
+		name              string
+		wantDeadline      bool
+		waitForExpiration bool
+		timeout           string
 	}{
 		{
-			name:         "deadline not requested",
-			wantDeadline: false,
-			wantExpired:  false,
-			timeout:      "",
+			name:              "deadline not requested",
+			wantDeadline:      false,
+			waitForExpiration: false,
+			timeout:           "",
 		},
 		{
-			name:         "NaN deadline",
-			wantDeadline: false,
-			wantExpired:  false,
-			timeout:      "aaa",
+			name:              "NaN deadline",
+			wantDeadline:      false,
+			waitForExpiration: false,
+			timeout:           "aaa",
 		},
 		{
-			name:         "zero deadline",
-			wantDeadline: true,
-			wantExpired:  true,
-			timeout:      "0",
+			name:              "very long deadline",
+			wantDeadline:      true,
+			waitForExpiration: false,
+			timeout:           "3600",
 		},
 		{
-			name:         "very long deadline",
-			wantDeadline: true,
-			wantExpired:  false,
-			timeout:      "3600",
+			name:              "short deadline should terminate",
+			wantDeadline:      true,
+			waitForExpiration: true,
+			timeout:           "1",
 		},
 	}
 
@@ -1054,10 +1053,16 @@ func TestHTTPRequestTimeout(t *testing.T) {
 
 			var httpReqCtx context.Context
 			functions.HTTP("http", func(w http.ResponseWriter, r *http.Request) {
+				if tc.waitForExpiration {
+					<-r.Context().Done()
+				}
 				httpReqCtx = r.Context()
 			})
 			var ceReqCtx context.Context
 			functions.CloudEvent("cloudevent", func(ctx context.Context, event event.Event) error {
+				if tc.waitForExpiration {
+					<-ctx.Done()
+				}
 				ceReqCtx = ctx
 				return nil
 			})
@@ -1078,10 +1083,10 @@ func TestHTTPRequestTimeout(t *testing.T) {
 				}
 				deadline, ok := httpReqCtx.Deadline()
 				if ok != tc.wantDeadline {
-					t.Fatalf("expected deadline %v but got %v", tc.wantDeadline, ok)
+					t.Errorf("expected deadline %v but got %v", tc.wantDeadline, ok)
 				}
-				if expired := deadline.Before(time.Now()); ok && expired != tc.wantExpired {
-					t.Fatalf("expected expired %v but got %v", tc.wantExpired, expired)
+				if expired := deadline.Before(time.Now()); ok && expired != tc.waitForExpiration {
+					t.Errorf("expected expired %v but got %v", tc.waitForExpiration, expired)
 				}
 			})
 
@@ -1091,11 +1096,11 @@ func TestHTTPRequestTimeout(t *testing.T) {
 					t.Fatalf("failed to create request")
 				}
 				req.Header.Add("Content-Type", "application/cloudevents+json")
-				_, err = (&http.Client{}).Do(req)
+				client := &http.Client{}
+				_, err = client.Do(req)
 				if err != nil {
 					t.Fatalf("request failed")
 				}
-
 				if ceReqCtx == nil {
 					t.Fatalf("expected non-nil request context")
 				}
@@ -1103,8 +1108,8 @@ func TestHTTPRequestTimeout(t *testing.T) {
 				if ok != tc.wantDeadline {
 					t.Errorf("expected deadline %v but got %v", tc.wantDeadline, ok)
 				}
-				if expired := deadline.Before(time.Now()); ok && expired != tc.wantExpired {
-					t.Errorf("expected expired %v but got %v", tc.wantExpired, expired)
+				if expired := deadline.Before(time.Now()); ok && expired != tc.waitForExpiration {
+					t.Errorf("expected expired %v but got %v", tc.waitForExpiration, expired)
 				}
 			})
 		})

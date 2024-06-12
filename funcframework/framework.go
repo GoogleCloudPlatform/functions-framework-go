@@ -398,7 +398,7 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 	fmt.Fprint(w, msg)
 }
 
-// addTImeoutToRequestContext replaces the request's context with a cancellation if requested
+// setContextTimeoutIfRequested replaces the request's context with a cancellation if requested
 func setContextTimeoutIfRequested(r *http.Request) (*http.Request, func()) {
 	timeoutStr := os.Getenv("CLOUD_RUN_TIMEOUT_SECONDS")
 	if timeoutStr == "" {
