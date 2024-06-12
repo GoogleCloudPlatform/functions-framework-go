@@ -1001,7 +1001,6 @@ func TestHTTPRequestTimeout(t *testing.T) {
 	timeoutEnvVar := "CLOUD_RUN_TIMEOUT_SECONDS"
 	prev := os.Getenv(timeoutEnvVar)
 	defer os.Setenv(timeoutEnvVar, prev)
-	defer cleanup()
 
 	cloudeventsJSON := []byte(`{
 		"specversion" : "1.0",
@@ -1034,7 +1033,7 @@ func TestHTTPRequestTimeout(t *testing.T) {
 			timeout:      "aaa",
 		},
 		{
-			name:         "zero deadline",
+			name:         "expired deadline",
 			wantDeadline: true,
 			wantExpired:  true,
 			timeout:      "0",
@@ -1091,7 +1090,8 @@ func TestHTTPRequestTimeout(t *testing.T) {
 					t.Fatalf("failed to create request")
 				}
 				req.Header.Add("Content-Type", "application/cloudevents+json")
-				_, err = (&http.Client{}).Do(req)
+				client := &http.Client{}
+				_, err = client.Do(req)
 				if err != nil {
 					t.Fatalf("request failed")
 				}
