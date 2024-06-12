@@ -192,6 +192,10 @@ func convertBackgroundToCloudEvent(ceHandler http.Handler) http.Handler {
 				return
 			}
 		}
+		r, cancel := setTimeoutContextIfRequested(r)
+		if cancel != nil {
+			defer cancel()
+		}
 		ceHandler.ServeHTTP(w, r)
 	})
 }

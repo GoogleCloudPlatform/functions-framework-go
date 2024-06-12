@@ -25,7 +25,9 @@ import (
 	"os"
 	"reflect"
 	"runtime/debug"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/internal/registry"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -196,6 +198,10 @@ func wrapHTTPFunction(fn func(http.ResponseWriter, *http.Request)) (http.Handler
 			defer fmt.Println()
 			defer fmt.Fprintln(os.Stderr)
 		}
+		r, cancel := setTimeoutContextIfRequested(r)
+		if cancel != nil {
+			defer cancel()
+		}
 		defer recoverPanic(w, "user function execution", false)
 		fn(w, r)
 	}), nil
@@ -212,7 +218,10 @@ func wrapEventFunction(fn interface{}) (http.Handler, error) {
 			defer fmt.Println()
 			defer fmt.Fprintln(os.Stderr)
 		}
-
+		r, cancel := setTimeoutContextIfRequested(r)
+		if cancel != nil {
+			defer cancel()
+		}
 		if shouldConvertCloudEventToBackgroundRequest(r) {
 			if err := convertCloudEventToBackgroundRequest(r); err != nil {
 				writeHTTPErrorResponse(w, http.StatusBadRequest, crashStatus, fmt.Sprintf("error converting CloudEvent to Background Event: %v", err))
@@ -387,4 +396,19 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 	w.Header().Set(functionStatusHeader, status)
 	w.WriteHeader(statusCode)
 	fmt.Fprint(w, msg)
+}
+
+// addTImeoutToRequestContext replaces the request's context with a cancellation if requested
+func setTimeoutContextIfRequested(r *http.Request) (*http.Request, func()) {
+	timeoutStr := os.Getenv("CLOUD_RUN_TIMEOUT_SECONDS")
+	if timeoutStr == "" {
+		return r, nil
+	}
+	timeoutSecs, err := strconv.Atoi(timeoutStr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not parse CLOUD_RUN_TIMEOUT_SECONDS as an integer value in seconds: %v", err)
+		return r, nil
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeoutSecs)*time.Second)
+	return r.WithContext(ctx), cancel
 }
