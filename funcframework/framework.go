@@ -198,7 +198,7 @@ func wrapHTTPFunction(fn func(http.ResponseWriter, *http.Request)) (http.Handler
 			defer fmt.Println()
 			defer fmt.Fprintln(os.Stderr)
 		}
-		r, cancel := setTimeoutContextIfRequested(r)
+		r, cancel := setContextTimeoutIfRequested(r)
 		if cancel != nil {
 			defer cancel()
 		}
@@ -218,7 +218,7 @@ func wrapEventFunction(fn interface{}) (http.Handler, error) {
 			defer fmt.Println()
 			defer fmt.Fprintln(os.Stderr)
 		}
-		r, cancel := setTimeoutContextIfRequested(r)
+		r, cancel := setContextTimeoutIfRequested(r)
 		if cancel != nil {
 			defer cancel()
 		}
@@ -399,14 +399,14 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 }
 
 // addTImeoutToRequestContext replaces the request's context with a cancellation if requested
-func setTimeoutContextIfRequested(r *http.Request) (*http.Request, func()) {
+func setContextTimeoutIfRequested(r *http.Request) (*http.Request, func()) {
 	timeoutStr := os.Getenv("CLOUD_RUN_TIMEOUT_SECONDS")
 	if timeoutStr == "" {
 		return r, nil
 	}
 	timeoutSecs, err := strconv.Atoi(timeoutStr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not parse CLOUD_RUN_TIMEOUT_SECONDS as an integer value in seconds: %v", err)
+		fmt.Fprintf(os.Stderr, "Could not parse CLOUD_RUN_TIMEOUT_SECONDS as an integer value in seconds: %v\n", err)
 		return r, nil
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeoutSecs)*time.Second)
