@@ -25,10 +25,12 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/GoogleCloudPlatform/functions-framework-go/internal/registry"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -992,6 +994,125 @@ func TestServeMultipleFunctions(t *testing.T) {
 		if got := strings.TrimSpace(string(body)); got != f.wantResp {
 			t.Errorf("unexpected http response: got %q; want: %q", got, f.wantResp)
 		}
+	}
+}
+
+func TestHTTPRequestTimeout(t *testing.T) {
+	timeoutEnvVar := "CLOUD_RUN_TIMEOUT_SECONDS"
+	prev := os.Getenv(timeoutEnvVar)
+	defer os.Setenv(timeoutEnvVar, prev)
+
+	cloudeventsJSON := []byte(`{
+		"specversion" : "1.0",
+		"type" : "com.github.pull.create",
+		"source" : "https://github.com/cloudevents/spec/pull",
+		"subject" : "123",
+		"id" : "A234-1234-1234",
+		"time" : "2018-04-05T17:31:00Z",
+		"comexampleextension1" : "value",
+		"datacontenttype" : "application/xml",
+		"data" : "<much wow=\"xml\"/>"
+	}`)
+
+	tcs := []struct {
+		name              string
+		wantDeadline      bool
+		waitForExpiration bool
+		timeout           string
+	}{
+		{
+			name:              "deadline not requested",
+			wantDeadline:      false,
+			waitForExpiration: false,
+			timeout:           "",
+		},
+		{
+			name:              "NaN deadline",
+			wantDeadline:      false,
+			waitForExpiration: false,
+			timeout:           "aaa",
+		},
+		{
+			name:              "very long deadline",
+			wantDeadline:      true,
+			waitForExpiration: false,
+			timeout:           "3600",
+		},
+		{
+			name:              "short deadline should terminate",
+			wantDeadline:      true,
+			waitForExpiration: true,
+			timeout:           "1",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			defer cleanup()
+			os.Setenv(timeoutEnvVar, tc.timeout)
+
+			var httpReqCtx context.Context
+			functions.HTTP("http", func(w http.ResponseWriter, r *http.Request) {
+				if tc.waitForExpiration {
+					<-r.Context().Done()
+				}
+				httpReqCtx = r.Context()
+			})
+			var ceReqCtx context.Context
+			functions.CloudEvent("cloudevent", func(ctx context.Context, event event.Event) error {
+				if tc.waitForExpiration {
+					<-ctx.Done()
+				}
+				ceReqCtx = ctx
+				return nil
+			})
+			server, err := initServer()
+			if err != nil {
+				t.Fatalf("initServer(): %v", err)
+			}
+			srv := httptest.NewServer(server)
+			defer srv.Close()
+
+			t.Run("http", func(t *testing.T) {
+				_, err = http.Get(srv.URL + "/http")
+				if err != nil {
+					t.Fatalf("expected success")
+				}
+				if httpReqCtx == nil {
+					t.Fatalf("expected non-nil request context")
+				}
+				deadline, ok := httpReqCtx.Deadline()
+				if ok != tc.wantDeadline {
+					t.Errorf("expected deadline %v but got %v", tc.wantDeadline, ok)
+				}
+				if expired := deadline.Before(time.Now()); ok && expired != tc.waitForExpiration {
+					t.Errorf("expected expired %v but got %v", tc.waitForExpiration, expired)
+				}
+			})
+
+			t.Run("cloudevent", func(t *testing.T) {
+				req, err := http.NewRequest("POST", srv.URL+"/cloudevent", bytes.NewBuffer(cloudeventsJSON))
+				if err != nil {
+					t.Fatalf("failed to create request")
+				}
+				req.Header.Add("Content-Type", "application/cloudevents+json")
+				client := &http.Client{}
+				_, err = client.Do(req)
+				if err != nil {
+					t.Fatalf("request failed")
+				}
+				if ceReqCtx == nil {
+					t.Fatalf("expected non-nil request context")
+				}
+				deadline, ok := ceReqCtx.Deadline()
+				if ok != tc.wantDeadline {
+					t.Errorf("expected deadline %v but got %v", tc.wantDeadline, ok)
+				}
+				if expired := deadline.Before(time.Now()); ok && expired != tc.waitForExpiration {
+					t.Errorf("expected expired %v but got %v", tc.waitForExpiration, expired)
+				}
+			})
+		})
 	}
 }
 
