@@ -42,7 +42,7 @@ func init() {
 }
 
 func concurrentHTTP(w http.ResponseWriter, r *http.Request) {
-	time.Sleep(5 * time.Second)
+	time.Sleep(1 * time.Second)
 }
 
 // HTTP is a simple HTTP function that writes the request body to the response body.
