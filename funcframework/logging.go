@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -145,7 +144,6 @@ func (w *structuredLogWriter) Write(output []byte) (int, error) {
 	wroteLines := 0
 	for {
 		advance, token, err := bufio.ScanLines(buf, false)
-		fmt.Printf("advance: %v token: %v\n", advance, string(token))
 		if token == nil || err != nil {
 			break
 		}
