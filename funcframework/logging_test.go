@@ -120,8 +120,14 @@ func TestLogPackageCompat(t *testing.T) {
 
 	l := log.New(w, "", 0)
 	l.Print("go logger line")
+	l.Print("a second log line")
+	l.Print("a multiline\nstring in a single log\ncall")
 
 	wantOutput := `{"message":"go logger line","logging.googleapis.com/trace":"b","logging.googleapis.com/spanId":"a","logging.googleapis.com/labels":{"execution_id":"c"}}
+{"message":"a second log line","logging.googleapis.com/trace":"b","logging.googleapis.com/spanId":"a","logging.googleapis.com/labels":{"execution_id":"c"}}
+{"message":"a multiline","logging.googleapis.com/trace":"b","logging.googleapis.com/spanId":"a","logging.googleapis.com/labels":{"execution_id":"c"}}
+{"message":"string in a single log","logging.googleapis.com/trace":"b","logging.googleapis.com/spanId":"a","logging.googleapis.com/labels":{"execution_id":"c"}}
+{"message":"call","logging.googleapis.com/trace":"b","logging.googleapis.com/spanId":"a","logging.googleapis.com/labels":{"execution_id":"c"}}
 `
 	if output.String() != wantOutput {
 		t.Errorf("expected output %q got %q", wantOutput, output.String())
