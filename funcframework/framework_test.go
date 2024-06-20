@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -955,6 +956,7 @@ func TestServeMultipleFunctions(t *testing.T) {
 			name: "fn1",
 			fn: func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, "Hello Foo!")
+				log.Println("Hello world this is a test!")
 			},
 			wantResp: "Hello Foo!",
 		},
@@ -962,6 +964,7 @@ func TestServeMultipleFunctions(t *testing.T) {
 			name: "fn2",
 			fn: func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, "Hello Bar!")
+				log.Println("Hello world this is a test!")
 			},
 			wantResp: "Hello Bar!",
 		},

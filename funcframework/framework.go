@@ -198,7 +198,7 @@ func wrapHTTPFunction(fn func(http.ResponseWriter, *http.Request)) (http.Handler
 			defer fmt.Println()
 			defer fmt.Fprintln(os.Stderr)
 		}
-		r, cancel := setContextTimeoutIfRequested(r)
+		r, cancel := setupRequestContext(r)
 		if cancel != nil {
 			defer cancel()
 		}
@@ -218,7 +218,7 @@ func wrapEventFunction(fn interface{}) (http.Handler, error) {
 			defer fmt.Println()
 			defer fmt.Fprintln(os.Stderr)
 		}
-		r, cancel := setContextTimeoutIfRequested(r)
+		r, cancel := setupRequestContext(r)
 		if cancel != nil {
 			defer cancel()
 		}
@@ -396,6 +396,12 @@ func writeHTTPErrorResponse(w http.ResponseWriter, statusCode int, status, msg s
 	w.Header().Set(functionStatusHeader, status)
 	w.WriteHeader(statusCode)
 	fmt.Fprint(w, msg)
+}
+
+func setupRequestContext(r *http.Request) (*http.Request, func()) {
+	r, cancel := setContextTimeoutIfRequested(r)
+	r = addLoggingIDsToRequest(r)
+	return r, cancel
 }
 
 // setContextTimeoutIfRequested replaces the request's context with a cancellation if requested
