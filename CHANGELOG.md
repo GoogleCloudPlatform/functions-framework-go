@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.0](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.8.1...v1.9.0) (2024-07-01)
+
+
+### Features
+
+* add structured log writer ([#246](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/246)) ([b8c2a57](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/b8c2a57f1f2a52db0a5f279874fca74d50e19691))
+
+
+### Bug Fixes
+
+* cancel request context when timeout exceeded ([#244](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/244)) ([298bc02](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/298bc02b72b75580a4b1e758f5503eb35fd39245))
+
 ## [1.8.1](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.8.0...v1.8.1) (2024-02-14)
 
 
