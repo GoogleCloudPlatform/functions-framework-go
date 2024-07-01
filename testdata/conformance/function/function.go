@@ -20,9 +20,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 
+	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
@@ -45,6 +47,8 @@ func concurrentHTTP(w http.ResponseWriter, r *http.Request) {
 
 // HTTP is a simple HTTP function that writes the request body to the response body.
 func HTTP(w http.ResponseWriter, r *http.Request) {
+	l := log.New(funcframework.LogWriter(r.Context()), "", log.Lshortfile)
+	l.Println("handling HTTP request")
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -58,6 +62,8 @@ func HTTP(w http.ResponseWriter, r *http.Request) {
 
 // CloudEvent is a cloud event function that dumps the event to JSON and calls the validator script
 func CloudEvent(ctx context.Context, ce cloudevents.Event) error {
+	l := log.New(funcframework.LogWriter(ctx), "", log.Lshortfile)
+	l.Println("handling CloudEvent request")
 	e, err := json.Marshal(ce)
 	if err != nil {
 		return fmt.Errorf("marshalling cloud event: %v", err)
