@@ -23,8 +23,8 @@ jobs:
       cloudevent-builder-source: 'testdata/conformance/function'
       cloudevent-builder-target: 'declarativeCloudEvent'
       prerun: ${{format('testdata/conformance/prerun.sh {0} testdata/conformance/function', github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha )}}
-      builder-runtime: 'go113'
-      builder-runtime-version: '1.13'
+      builder-runtime: 'go118'
+      builder-runtime-version: '1.18'
       builder-url: gcr.io/gae-runtimes/buildpacks/google-gae-22/go/builder:latest
   go116-buildpack-test:
     if: github.event.pull_request.head.repo.full_name == github.repository
@@ -35,8 +35,8 @@ jobs:
       cloudevent-builder-source: 'testdata/conformance/function'
       cloudevent-builder-target: 'declarativeCloudEvent'
       prerun:  ${{format('testdata/conformance/prerun.sh {0} testdata/conformance/function', github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha )}}
-      builder-runtime: 'go116'
-      builder-runtime-version: '1.16'
+      builder-runtime: 'go120'
+      builder-runtime-version: '1.20'
       builder-url: gcr.io/gae-runtimes/buildpacks/google-gae-22/go/builder:latest
   non-declarative-buildpack-test:
     if: github.event.pull_request.head.repo.full_name == github.repository
@@ -47,6 +47,6 @@ jobs:
       cloudevent-builder-source: 'testdata/conformance/nondeclarative'
       cloudevent-builder-target: 'CloudEvent'
       prerun:  ${{format('testdata/conformance/prerun.sh {0} testdata/conformance/nondeclarative', github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha )}}
-      builder-runtime: 'go116'
-      builder-runtime-version: '1.16'
+      builder-runtime: 'go118'
+      builder-runtime-version: '1.18'
       builder-url: gcr.io/gae-runtimes/buildpacks/google-gae-22/go/builder:latest
