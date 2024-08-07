@@ -1,6 +1,6 @@
 # Functions Framework for Go
 
-[![GoDoc](https://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go?status.svg)](http://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go) [![Go version](https://img.shields.io/badge/go-v1.11+-blue)](https://golang.org/dl/#stable)
+[![GoDoc](https://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go?status.svg)](http://godoc.org/github.com/GoogleCloudPlatform/functions-framework-go) [![Go version](https://img.shields.io/badge/go-v1.18+-blue)](https://golang.org/dl/#stable)
 
 [![Go unit CI][ff_go_unit_img]][ff_go_unit_link] [![Go lint CI][ff_go_lint_img]][ff_go_lint_link] [![Go conformace CI][ff_go_conformance_img]][ff_go_conformance_link]  ![Security Scorecard](https://api.securityscorecards.dev/projects/github.com/GoogleCloudPlatform/functions-framework-go/badge)
 
@@ -44,7 +44,7 @@ handling logic.
 
 ## Quickstart: Hello, World on your local machine
 
-1. Install Go 1.11+.
+1. Install Go 1.18+.
 
 1. Create a Go module:
 	```sh
