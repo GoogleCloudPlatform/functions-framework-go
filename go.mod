@@ -1,6 +1,6 @@
 module github.com/GoogleCloudPlatform/functions-framework-go
 
-go 1.18
+go 1.21
 
 require (
 	cloud.google.com/go/functions v1.19.2
