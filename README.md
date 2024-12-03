@@ -5,12 +5,12 @@
 [![Go unit CI][ff_go_unit_img]][ff_go_unit_link] [![Go lint CI][ff_go_lint_img]][ff_go_lint_link] [![Go conformace CI][ff_go_conformance_img]][ff_go_conformance_link]  ![Security Scorecard](https://api.securityscorecards.dev/projects/github.com/GoogleCloudPlatform/functions-framework-go/badge)
 
 An open source FaaS (Function as a Service) framework for writing portable
-Go functions, brought to you by the Google Cloud Functions team.
+Go functions.
 
 The Functions Framework lets you write lightweight functions that run in many
 different environments, including:
 
-*   [Google Cloud Functions](https://cloud.google.com/functions/)
+*   [Google Cloud Run functions](https://cloud.google.com/functions/)
 *   Your local development machine
 *   [Knative](https://github.com/knative/)-based environments
 *   [Google App Engine](https://cloud.google.com/appengine/docs/go/)
@@ -36,7 +36,7 @@ handling logic.
 
 ## Features
 
-*   Build your Function in the same container environment used by Cloud Functions using [buildpacks](https://github.com/GoogleCloudPlatform/buildpacks).
+*   Build your Function in the same container environment used by Cloud Run functions using [buildpacks](https://github.com/GoogleCloudPlatform/buildpacks).
 *   Invoke a function in response to a request
 *   Automatically unmarshal events conforming to the
     [CloudEvents](https://cloudevents.io/) spec
@@ -161,7 +161,7 @@ handling logic.
 
 ## Run your function on serverless platforms
 
-### Google Cloud Functions
+### Google Cloud Run functions
 
 Deploy from your local machine using the `gcloud` command-line tool.
 [Check out the Cloud Functions quickstart](https://cloud.google.com/functions/docs/quickstart).
