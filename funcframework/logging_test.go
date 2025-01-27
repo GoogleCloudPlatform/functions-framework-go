@@ -15,13 +15,15 @@ func TestLoggingIDExtraction(t *testing.T) {
 		wantTraceID     string
 		wantSpanID      string
 		wantExecutionID string
+		randomExecutionIdGenerated	bool
 	}{
 		{
 			name:    "no IDs",
 			headers: map[string]string{},
+			randomExecutionIdGenerated: true,
 		},
 		{
-			name: "execution ID only",
+			name: "provided execution ID only",
 			headers: map[string]string{
 				"Function-Execution-Id": "exec id",
 			},
@@ -32,6 +34,7 @@ func TestLoggingIDExtraction(t *testing.T) {
 			headers: map[string]string{
 				"X-Cloud-Trace-Context": "$*#$(v434)",
 			},
+			randomExecutionIdGenerated: true,
 		},
 		{
 			name: "trace ID only",
@@ -39,6 +42,7 @@ func TestLoggingIDExtraction(t *testing.T) {
 				"X-Cloud-Trace-Context": "0123456789abcdef",
 			},
 			wantTraceID: "0123456789abcdef",
+			randomExecutionIdGenerated: true,
 		},
 		{
 			name: "trace ID and span ID",
@@ -47,6 +51,7 @@ func TestLoggingIDExtraction(t *testing.T) {
 			},
 			wantTraceID: "0123456789abcdef",
 			wantSpanID:  "aaaaaa",
+			randomExecutionIdGenerated: true,
 		},
 		{
 			name: "all",
@@ -77,8 +82,12 @@ func TestLoggingIDExtraction(t *testing.T) {
 				t.Errorf("expected span id %q but got %q", tc.wantSpanID, spid)
 			}
 
-			if eid := ExecutionIDFromContext(ctx); eid != tc.wantExecutionID {
+			eid := ExecutionIDFromContext(ctx); 
+			if tc.wantExecutionID != "" && eid != tc.wantExecutionID {
 				t.Errorf("expected execution id %q but got %q", tc.wantExecutionID, eid)
+			}
+			if tc.randomExecutionIdGenerated && eid == "" {
+				t.Errorf("expected random execution id generated but got %q", eid)
 			}
 		})
 	}

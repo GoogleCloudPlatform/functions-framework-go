@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
 	"sync"
+	"time"
 )
 
 var (
@@ -32,6 +35,11 @@ type contextKey string
 
 func addLoggingIDsToRequest(r *http.Request) *http.Request {
 	executionID := r.Header.Get("Function-Execution-Id")
+	if executionID == "" {
+		timestamp := time.Now().UnixNano()
+		random := rand.Int63()
+		executionID = fmt.Sprintf("%06x%06x", timestamp, random)
+	}
 	traceID, spanID, _ := deconstructXCloudTraceContext(r.Header.Get("X-Cloud-Trace-Context"))
 
 	if executionID == "" && traceID == "" && spanID == "" {
@@ -182,7 +190,7 @@ func (w *structuredLogWriter) Close() error {
 //	)
 //	...
 //	func helloWorld(w http.ResponseWriter, r *http.Request) {
-//	  l := logger.New(funcframework.LogWriter(r.Context()))
+//	  l := log.New(funcframework.LogWriter(r.Context()), "", 0)
 //	  l.Println("hello world!")
 //	}
 func LogWriter(ctx context.Context) io.WriteCloser {
