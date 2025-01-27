@@ -153,7 +153,7 @@ To have exeuction id logged for `Cloud Run Functions` executions, users can eith
 
 
 OR 
-* Leverage `LogWriter` provided in function-framework-go(v1.9.0 or higher) library to generate log. If `Function-Exeuction-Id` is empty, a pseduorandom execution id will be auto-generated if `LogWriter` is used.  
+* Leverage `LogWriter` provided in function-framework-go(v1.9.0 or higher) library to generate logs. If `Function-Exeuction-Id` is empty, a pseduorandom execution id will be auto-generated if `LogWriter` is used.  
 
 	```golang
 	package function
