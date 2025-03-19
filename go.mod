@@ -3,7 +3,7 @@ module github.com/GoogleCloudPlatform/functions-framework-go
 go 1.21
 
 require (
-	cloud.google.com/go/functions v1.19.4
+	cloud.google.com/go/functions v1.19.3
 	github.com/cloudevents/sdk-go/v2 v2.15.2
 	github.com/google/go-cmp v0.7.0
 )
