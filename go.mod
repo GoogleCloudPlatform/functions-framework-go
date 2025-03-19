@@ -5,7 +5,7 @@ go 1.21
 require (
 	cloud.google.com/go/functions v1.19.3
 	github.com/cloudevents/sdk-go/v2 v2.15.2
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 )
 
 require (
