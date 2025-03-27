@@ -25,7 +25,7 @@ jobs:
       prerun: ${{format('testdata/conformance/prerun.sh {0} testdata/conformance/function', github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha )}}
       builder-runtime: 'go118'
       builder-runtime-version: '1.18'
-      builder-url: gcr.io/gae-runtimes/buildpacks/google-gae-22/go/builder:latest
+      builder-url: gcr.io/serverless-runtimes/google-22-full/builder/go:latest
   go116-buildpack-test:
     if: github.event.pull_request.head.repo.full_name == github.repository
     uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@main
@@ -37,7 +37,7 @@ jobs:
       prerun:  ${{format('testdata/conformance/prerun.sh {0} testdata/conformance/function', github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha )}}
       builder-runtime: 'go120'
       builder-runtime-version: '1.20'
-      builder-url: gcr.io/gae-runtimes/buildpacks/google-gae-22/go/builder:latest
+      builder-url: gcr.io/serverless-runtimes/google-22-full/builder/go:latest
   non-declarative-buildpack-test:
     if: github.event.pull_request.head.repo.full_name == github.repository
     uses: GoogleCloudPlatform/functions-framework-conformance/.github/workflows/buildpack-integration-test.yml@main
@@ -49,4 +49,4 @@ jobs:
       prerun:  ${{format('testdata/conformance/prerun.sh {0} testdata/conformance/nondeclarative', github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha )}}
       builder-runtime: 'go118'
       builder-runtime-version: '1.18'
-      builder-url: gcr.io/gae-runtimes/buildpacks/google-gae-22/go/builder:latest
+      builder-url: gcr.io/serverless-runtimes/google-22-full/builder/go:latest
