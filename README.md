@@ -98,6 +98,16 @@ handling logic.
 	)
 
 	func main() {
+        // Normally, you should start the local development server from the command
+		// line, but certain IDE's like Intellij and VSCode support directly running
+		// go applications inside the IDE directly. In these cases, the function won't
+		// be recognized. In these cases, set the "FUNCTION_TARGET" env variable directly
+        // to ensure the function is registered for the local server.
+        // err := os.Setenv("FUNCTION_TARGET", "HelloWorld")
+	    // if err != nil {
+		//     log.Fatalf("failed to set FUNCTION_TARGET: %v\n for local dev server", err)
+	    // }
+ 
 		// Use PORT environment variable, or default to 8080.
 		port := "8080"
 		if envPort := os.Getenv("PORT"); envPort != "" {
