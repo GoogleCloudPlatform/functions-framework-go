@@ -98,9 +98,9 @@ handling logic.
 	)
 
 	func main() {
-         // Normally, you should start the local development server from the command
-         // line, but certain IDE's like Intellij and VSCode support directly running
-         // go applications from the IDE. In these cases, the function won't be recognized. 
+         // The local development server is normally started from the command line, but
+         // certain IDE's support directly running go applications from the IDE. In these
+         // cases, the function won't be recognized. 
          //
          // To resolve, set the "FUNCTION_TARGET" env variable directly to ensure the 
          // function is registered for the local server.
