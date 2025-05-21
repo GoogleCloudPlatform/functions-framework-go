@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.3](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.9.2...v1.9.3) (2025-05-21)
+
+
+### Bug Fixes
+
+* Updating functions framework matrix for newer go versions ([#269](https://github.com/GoogleCloudPlatform/functions-framework-go/issues/269)) ([eb35318](https://github.com/GoogleCloudPlatform/functions-framework-go/commit/eb35318cd8f6c066c1571a8fbd989e8137ff459c))
+
 ## [1.9.2](https://github.com/GoogleCloudPlatform/functions-framework-go/compare/v1.9.1...v1.9.2) (2025-03-27)
 
 
