@@ -98,17 +98,17 @@ handling logic.
 	)
 
 	func main() {
-         // The local development server is normally started from the command line, but
-         // certain IDE's support directly running go applications from the IDE. In these
-         // cases, the function won't be recognized. 
-         //
-         // To resolve, set the "FUNCTION_TARGET" env variable directly to ensure the 
-         // function is registered for the local server.
-         //
-         // err := os.Setenv("FUNCTION_TARGET", "HelloWorld")
-         // if err != nil {
-         //     log.Fatalf("failed to set FUNCTION_TARGET: %v\n for local dev server", err)
-         // }
+		// The local development server is normally started from the command line, but
+		// certain IDE's support directly running go applications and the function won't
+		// be recognized. 
+		//
+		// To resolve, set the "FUNCTION_TARGET" env variable directly to ensure the 
+		// function is registered for the local server.
+		//
+		// err := os.Setenv("FUNCTION_TARGET", "HelloWorld")
+		// if err != nil {
+		//     log.Fatalf("failed to set FUNCTION_TARGET: %v\n for local dev server", err)
+		// }
  
 		// Use PORT environment variable, or default to 8080.
 		port := "8080"
