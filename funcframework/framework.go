@@ -29,8 +29,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GoogleCloudPlatform/functions-framework-go/internal/registry"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+
+	"github.com/GoogleCloudPlatform/functions-framework-go/internal/registry"
 )
 
 const (
@@ -308,11 +311,20 @@ func wrapCloudEventFunction(ctx context.Context, fn func(context.Context, cloude
 	}
 
 	h, err := cloudevents.NewHTTPReceiveHandler(ctx, p, logErrFn)
+	// Wrap the handler with OpenTelemetry instrumentation. We use global providers here.
+	withOtel := otelhttp.NewHandler(
+		h,
+		"receive",
+		otelhttp.WithPropagators(otel.GetTextMapPropagator()),
+		otelhttp.WithMeterProvider(otel.GetMeterProvider()),
+		otelhttp.WithTracerProvider(otel.GetTracerProvider()),
+	)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handler: %v", err)
 	}
 
-	return convertBackgroundToCloudEvent(h), nil
+	return convertBackgroundToCloudEvent(withOtel), nil
 }
 
 func handleEventFunction(w http.ResponseWriter, r *http.Request, fn interface{}) {
