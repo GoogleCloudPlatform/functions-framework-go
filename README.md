@@ -210,6 +210,129 @@ OR
 	# Output: Hello, World!
 	```
 
+## Using the framework in a monorepo
+
+If your Go functions live inside a larger repository with a shared `go.mod`, you
+need to tell the buildpack where to find the function package using the
+`GOOGLE_BUILDABLE` environment variable.
+
+**Key rules:**
+- `--path` must point to the directory containing `go.mod`.
+- `GOOGLE_BUILDABLE` is a path *relative to `--path`* pointing to the **package
+  that calls `functions.HTTP` (or `functions.CloudEvent`) inside `init()`**.
+  Do **not** point it at a `cmd/` subdirectory — the buildpack generates its own
+  `main`.
+
+**Example layout:**
+
+```
+monorepo/
+└── go/                  ← go.mod lives here
+    ├── functions/
+    │   ├── func_a/
+    │   │   ├── func_a.go    ← functions.HTTP("FuncA", …) in init()
+    │   │   └── cmd/
+    │   │       └── main.go  ← local dev only; buildpack ignores this
+    │   └── func_b/
+    │       └── func_b.go
+    └── pkg/
+        └── shared.go
+```
+
+**Build command:**
+
+```sh
+pack build my-func-a \
+  --path ./go \
+  --builder gcr.io/buildpacks/builder:google-22 \
+  --env GOOGLE_FUNCTION_SIGNATURE_TYPE=http \
+  --env GOOGLE_FUNCTION_TARGET=FuncA \
+  --env GOOGLE_BUILDABLE=./functions/func_a
+```
+
+The `--path` flag is `./go` (the module root); `GOOGLE_BUILDABLE` is
+`./functions/func_a` (the package with the `init()` registration), **not**
+`./functions/func_a/cmd`.
+
+**Common error:** `unable to find Go package in /workspace/serverless_function_source_code`
+
+This error means `GOOGLE_BUILDABLE` is missing or points at the wrong directory.
+Verify that:
+1. `--path` is the directory that contains `go.mod`.
+2. `GOOGLE_BUILDABLE` is the package directory with `functions.HTTP` (or
+   `functions.CloudEvent`) in `init()`, relative to `--path`.
+3. The package is importable from the module root (i.e. it is inside the same
+   module, or referenced via a `replace` directive in `go.mod`).
+
+## Graceful shutdown (cleanup logic)
+
+Cloud Run functions (2nd gen) sends `SIGTERM` to the container before shutting
+it down. You can use this signal to flush telemetry, close database connections,
+or run other finalisation logic.
+
+**Pattern: register a signal handler in `cmd/main.go`** (works locally and in
+deployed 2nd-gen functions that use a custom `cmd/main.go`):
+
+```golang
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+
+	_ "example.com/hello"
+	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+)
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		<-ctx.Done()
+		log.Println("shutdown signal received, running cleanup...")
+		// db.Close()
+		// telemetryShutdown(context.Background())
+	}()
+
+	port := "8080"
+	if p := os.Getenv("PORT"); p != "" {
+		port = p
+	}
+	if err := funcframework.Start(port); err != nil {
+		log.Fatalf("funcframework.Start: %v\n", err)
+	}
+}
+```
+
+> **Note:** Cloud Run gives each instance a few seconds after `SIGTERM` to clean
+> up before sending `SIGKILL`. Keep cleanup logic fast (< 10 s) and avoid
+> blocking indefinitely.
+
+**Pattern: use `init()` in the function package** (alternative for deployed
+functions — no `cmd/main.go` required):
+
+```golang
+func init() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGTERM)
+	go func() {
+		<-c
+		// db.Close(), telemetryShutdown(), etc.
+		os.Exit(0)
+	}()
+
+	functions.HTTP("MyFunc", myFunc)
+}
+```
+
+> **Caution:** `os.Exit` in the signal goroutine terminates the process
+> immediately. Make sure all cleanup in the goroutine completes *before* calling
+> `os.Exit`, or use `defer` statements that will not run after `os.Exit`.
+
 ## Run your function on serverless platforms
 
 ### Google Cloud Run functions
