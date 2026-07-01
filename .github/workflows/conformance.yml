@@ -34,7 +34,7 @@ jobs:
     # Check if it's already in the cache
     - name: Cache client
       id: check-for-cached-client
-      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/go/bin/client
         key: ${{ steps.resolve-latest-client.outputs.version }}
@@ -66,7 +66,7 @@ jobs:
     - name: Pre-fetch go dependencies and build
       run: 'go build ./...'
     - name: Fetch conformance client
-      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/go/bin/client
         key: ${{ needs.download-conformance-client.outputs.cache-key }}
